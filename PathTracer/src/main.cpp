@@ -61,6 +61,7 @@ private:
 	void createMissSignature(ID3D12RootSignature** pRootSig);
 	void createHitSignature(ID3D12RootSignature** pRootSig);
 	void createAOHitSignature(ID3D12RootSignature** pRootSig);
+	void createShadowHitSignature(ID3D12RootSignature** pRootSig);
 	void createRaytracingPipeline();
 	void createShaderBindingTable();
 
@@ -258,7 +259,7 @@ void App::buildInstances()
 	auto s1 = std::make_unique<RaytracingInstance>(mGeometries["sphere"].get());
 	s1->objCBOffset = 1;
 	s1->normOffset = 1;
-	s1->world = XMMatrixTranslation(-1.0F, 0.0F, 1.0F);
+	s1->world = XMMatrixTranslation(-1.0F, 0.01F, 1.0F);
 	s1->matOffset = 1;
 	mRTInstances.push_back(std::move(s1));
 
@@ -286,7 +287,7 @@ void App::buildMaterials()
 	mMaterials.push_back(std::move(generic));
 
 	auto redBall = std::make_unique<Material>();
-	redBall->DiffuseAlbedo = { 1.0F, 0.0F, 0.0F, 1.0F };
+	redBall->DiffuseAlbedo = { 1.0F, 0.0F, 0.0F, 0.2F };
 	redBall->matCBIndex = 1;
 	mMaterials.push_back(std::move(redBall));
 
@@ -413,6 +414,14 @@ void App::createAOHitSignature(ID3D12RootSignature** pRootSig)
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
+void App::createShadowHitSignature(ID3D12RootSignature** pRootSig)
+{
+	nv_helpers_dx12::RootSignatureGenerator rsc;
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
+	rsc.Generate(md3dDevice.Get(), true, pRootSig);
+}
+
 void App::createRaytracingPipeline()
 {
 	nv_helpers_dx12::RayTracingPipelineGenerator pipeline(md3dDevice.Get());
@@ -435,6 +444,7 @@ void App::createRaytracingPipeline()
 	createMissSignature(&mSignatures["miss"]);
 	createHitSignature(&mSignatures["closestHit"]);
 	createAOHitSignature(&mSignatures["aoClosestHit"]);
+	createShadowHitSignature(&mSignatures["shadowClosestHit"]);
 
 	pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
 	pipeline.AddHitGroup(L"AOHitGroup", L"AOClosestHit");
@@ -444,11 +454,11 @@ void App::createRaytracingPipeline()
 	pipeline.AddRootSignatureAssociation(mSignatures["miss"].Get(), { L"Miss", L"AOMiss", L"ShadowMiss" });
 	pipeline.AddRootSignatureAssociation(mSignatures["closestHit"].Get(), { L"HitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["aoClosestHit"].Get(), { L"AOHitGroup" });
-	pipeline.AddRootSignatureAssociation(mSignatures["aoClosestHit"].Get(), { L"ShadowHitGroup" });
+	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
 
-	pipeline.SetMaxPayloadSize(5 * sizeof(float) + 1 * sizeof(UINT));
+	pipeline.SetMaxPayloadSize(4 * sizeof(float) + 1 * sizeof(UINT));
 	pipeline.SetMaxAttributeSize(2 * sizeof(float));
-	pipeline.SetMaxRecursionDepth(3);
+	pipeline.SetMaxRecursionDepth(4);
 
 	pipeline.Generate(&mRtStateObject);
 	ThrowIfFailed(mRtStateObject->QueryInterface(IID_PPV_ARGS(&mRtStateObjectProps)));
@@ -484,7 +494,10 @@ void App::createShaderBindingTable()
 								(void*) mCurrFrameResource->passCB->resource()->GetGPUVirtualAddress(),
 								heapPointer
 							   });
-		mSBTHelper.AddHitGroup(L"ShadowHitGroup", {});
+		mSBTHelper.AddHitGroup(L"ShadowHitGroup", {
+								(void*) objCBAddress,
+								(void*) (mCurrFrameResource->matCB->resource()->GetGPUVirtualAddress())
+							   });
 	}
 
 	UINT32 sbtSize0 = mSBTHelper.ComputeSBTSize();

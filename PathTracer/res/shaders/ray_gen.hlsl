@@ -27,17 +27,8 @@ void RayGen()
 	ray.TMin = 0.01F;
 	ray.TMax = 100000;
 
-	//ao pass
-	AOHitInfo aoPayload;
-	aoPayload.colorAndDistance = float2(0, 1.0F);
-	aoPayload.instanceID = -1;
-
-	TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, ray, aoPayload);
-
-	//standard pass
 	HitInfo payload;
 	payload.colorAndDistance = float4(0, 0, 0, 0);
-	payload.ambientAccess = aoPayload.colorAndDistance.r;
 	payload.recursionDepth = 1;
 
 	TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);

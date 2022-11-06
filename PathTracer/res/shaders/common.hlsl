@@ -8,19 +8,18 @@
 struct HitInfo
 {
 	float4 colorAndDistance;
-    float ambientAccess;
     uint recursionDepth;
 };
 
 struct AOHitInfo
 {
-    float2 colorAndDistance;
+    bool isHit;
     int instanceID;
 };
 
 struct ShadowHitInfo
 {
-    bool isHit;
+    float occlusion;
     float distance;
 };
 

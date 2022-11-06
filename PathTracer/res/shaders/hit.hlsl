@@ -60,6 +60,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	gLights[0].FalloffStart = 0.01F;
 	gLights[0].FalloffEnd = 10.0F;
 	gLights[0].SpotPower = 1.0F;
+
+	//TEMP
 	
 	//diffuse albedo
 	float4 mapColor = float4(1.0F, 1.0F, 1.0F, 1.0F);
@@ -73,20 +75,16 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 		norm = normalSampleToWorldSpace(normalSample.rgb, norm, tangent);
 	}
-	//TEMP
 
 	uint seed = initRand(DispatchRaysIndex().x * gFrameIndex, DispatchRaysIndex().y * gFrameIndex, 16);
 	float3 shadowFactor = float3(1.0F, 1.0F, 1.0F);
-
 	float3 lightDir = normalize(gLights[0].Position - worldOrigin);
-	float3 bitangent = cross(tangent, norm);
-	float3x3 TBN = float3x3(tangent, norm, bitangent);
 
 	float4 diffuseAlbedo = data.diffuseAlbedo;
 	diffuseAlbedo *= mapColor;
 	
 	//indirect back propagation
-	if(payload.ambientAccess < 0.0F)
+	if(payload.colorAndDistance.a < 0.0F)
 	{
 		float ldot = dot(norm, lightDir);
 		float spotFactor = pow(max(dot(-lightDir, gLights[0].Direction), 0.0F), gLights[0].SpotPower);
@@ -105,7 +103,6 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	float3 indirectLight = 0.0F;
 	HitInfo reflPayload;
 	reflPayload.colorAndDistance = float4(0, 0, 0, -1);
-	reflPayload.ambientAccess = -1.0F;
 	reflPayload.recursionDepth = payload.recursionDepth + 1;
 	
 	float3 rv = float3(nextRand(seed), nextRand(seed), nextRand(seed)) * 2.0F - 1.0F;
@@ -139,14 +136,13 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	ray.TMax = d;
 
 	ShadowHitInfo shadowPayload;
-	shadowPayload.isHit = false;
+	shadowPayload.occlusion = 1.0F;
 	shadowPayload.distance = 0.01F;
 	if(dot(ray.Direction, norm) > 0.0F)
 	{
 		TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 2, 0, 2, ray, shadowPayload);
-
-		if(shadowPayload.isHit)
-			shadowFactor[0] = shadowPayload.distance / d;
+		if(shadowPayload.distance > 0.0F)
+			shadowFactor[0] = 1.0F - shadowPayload.occlusion;
 	}
 
 	//blinn phong
@@ -158,7 +154,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 	//reflections
 	float rayNormDot = dot(norm, -WorldRayDirection());
-	if(data.reflectiveIndex > 0.01F && payload.recursionDepth < 2)
+	if(data.reflectiveIndex > 0.01F && payload.recursionDepth < 3)
 	{
 		float fresnelFactor;
 		if(data.diffuseAlbedo.a < 0.97F)
@@ -168,7 +164,6 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 		HitInfo reflPayload;
 		reflPayload.colorAndDistance = float4(1, 1, 1, 1);
-		reflPayload.ambientAccess = 1.0F;
 		reflPayload.recursionDepth = payload.recursionDepth + 1;
 
 		RayDesc reflRay;
@@ -187,7 +182,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	}
 
 	//refraction
-	if(data.diffuseAlbedo.a < 0.97F && payload.recursionDepth < 2)
+	if(data.diffuseAlbedo.a < 0.97F && payload.recursionDepth < 3)
 	{
 		float fresnelFactor;
 		if(data.reflectiveIndex > 0.01F)
@@ -198,7 +193,6 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 		HitInfo refrPayload;
 		refrPayload.colorAndDistance = float4(1, 1, 1, 1);
-		refrPayload.ambientAccess = 1.0F;
 		refrPayload.recursionDepth = payload.recursionDepth + 1;
 
 		RayDesc refrRay;
@@ -216,6 +210,24 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 		hitColor.rgb = lerp(hitColor.rgb, refrPayload.colorAndDistance.rgb, visibility * fresnelFactor * distanceFactor);
 	}
 
-	hitColor.rgb *= payload.ambientAccess;
+	//ambient occlusion
+	float occlusion = 1.0F;
+
+	RayDesc aoRay;
+	aoRay.Origin = worldOrigin;
+	aoRay.Direction = normalize(float3(nextRand(seed), nextRand(seed), nextRand(seed)) * 2.0F - 1.0F);
+	aoRay.TMin = 0.001F;
+	aoRay.TMax = 0.071F;
+
+	AOHitInfo aoPayload;
+	aoPayload.isHit = false;
+	aoPayload.instanceID = InstanceID();
+
+	TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, aoRay, aoPayload);
+	if(aoPayload.isHit)
+		occlusion = 0.0F;
+
+	hitColor.rgb *= occlusion;
+
 	payload.colorAndDistance = hitColor;
 }
