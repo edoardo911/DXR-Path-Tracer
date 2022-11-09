@@ -401,7 +401,7 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0, 1);
-	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4 } });
+	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -437,8 +437,7 @@ void App::createRaytracingPipeline()
 	pipeline.AddLibrary(mShaders["closestHit"].Get(), { L"ClosestHit" });
 	pipeline.AddLibrary(mShaders["aoMiss"].Get(), { L"AOMiss" });
 	pipeline.AddLibrary(mShaders["aoClosestHit"].Get(), { L"AOClosestHit" });
-	pipeline.AddLibrary(mShaders["shadow"].Get(), { L"ShadowClosestHit" });
-	pipeline.AddLibrary(mShaders["shadow"].Get(), { L"ShadowMiss" });
+	pipeline.AddLibrary(mShaders["shadow"].Get(), { L"ShadowClosestHit", L"ShadowMiss" });
 
 	createRayGenSignature(&mSignatures["rayGen"]);
 	createMissSignature(&mSignatures["miss"]);
@@ -527,7 +526,7 @@ void App::buildDescriptorHeap()
 	if(!mHeap)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-		heapDesc.NumDescriptors = 7;
+		heapDesc.NumDescriptors = 6;
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
@@ -555,10 +554,6 @@ void App::buildDescriptorHeap()
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.PlaneSlice = 0;
 	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	srvDesc.Texture2D.MipLevels = 1;
-	md3dDevice->CreateShaderResourceView(mOutputResource[1].Get(), &srvDesc, hDescriptor);
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 
 	srvDesc.Format = mTexture->Resource->GetDesc().Format;
 	srvDesc.Texture2D.MipLevels = mTexture->Resource->GetDesc().MipLevels;

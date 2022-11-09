@@ -11,7 +11,6 @@ RWTexture2D<float4> gOutput: register(u0);
 RWTexture2D<float4> gSumBuffer: register(u1);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
-Texture2D<float4> gLastSum: register(t1);
 
 [shader("raygeneration")]
 void RayGen()
@@ -27,6 +26,7 @@ void RayGen()
 	ray.TMin = 0.01F;
 	ray.TMax = 100000;
 
+	//standard pass
 	HitInfo payload;
 	payload.colorAndDistance = float4(0, 0, 0, 0);
 	payload.recursionDepth = 1;
