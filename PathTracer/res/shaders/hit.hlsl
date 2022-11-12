@@ -72,7 +72,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	if(gNormalIndex >= 0)
 	{
 		normalSample = gNormalMap[gNormalIndex].SampleLevel(gsamBilinearWrap, uvs, 0.0F);
-
+	
 		norm = normalSampleToWorldSpace(normalSample.rgb, norm, tangent);
 	}
 
@@ -93,7 +93,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 		if(data.reflectiveIndex > 0.01F || data.diffuseAlbedo.a < 0.97F)
 			lightPower *= 0.7F;
 		else
-			lightPower *= 0.5F;
+			lightPower *= 0.55F;
 		float3 color = diffuseAlbedo * gLights[0].Strength * lightPower * spotFactor;
 		payload.colorAndDistance = float4(color, RayTCurrent() + length(gLights[0].Position - worldOrigin));
 		return;
@@ -114,7 +114,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	reflRay.TMax = 1.5F;
 	
 	TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
-	indirectLight = reflPayload.colorAndDistance.rgb * min(3.5F / reflPayload.colorAndDistance.a, 1.0F);
+	if(reflPayload.colorAndDistance.a > 0.0F)
+		indirectLight = reflPayload.colorAndDistance.rgb * min(3.5F / reflPayload.colorAndDistance.a, 1.0F);
 
 	//ambient light
 	float4 ambient = gAmbientLight * diffuseAlbedo;
@@ -150,7 +151,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	Material mat = { diffuseAlbedo, data.fresnelR0, shininess };
 	float4 directLight = ComputeLighting(gLights, mat, worldOrigin, norm, -WorldRayDirection(), shadowFactor);
 
-	hitColor.rgb += directLight.rgb + (indirectLight);
+	hitColor.rgb += directLight.rgb + indirectLight;
 
 	//reflections
 	float rayNormDot = dot(norm, -WorldRayDirection());

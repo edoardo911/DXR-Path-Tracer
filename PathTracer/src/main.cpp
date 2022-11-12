@@ -59,6 +59,7 @@ private:
 	void createAccelerationStructures();
 	void createRayGenSignature(ID3D12RootSignature** pRootSig);
 	void createMissSignature(ID3D12RootSignature** pRootSig);
+	void createAOMissSignature(ID3D12RootSignature** pRootSig);
 	void createHitSignature(ID3D12RootSignature** pRootSig);
 	void createAOHitSignature(ID3D12RootSignature** pRootSig);
 	void createShadowHitSignature(ID3D12RootSignature** pRootSig);
@@ -95,6 +96,7 @@ private:
 	std::unique_ptr<Camera> mCam;
 
 	std::unique_ptr<Texture> mTexture;
+	std::unique_ptr<Texture> mCubemap;
 	std::unique_ptr<Texture> mNormalMap[2];
 
 	std::vector<std::unique_ptr<Material>> mMaterials;
@@ -390,6 +392,14 @@ void App::createRayGenSignature(ID3D12RootSignature** pRootSig)
 void App::createMissSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
+	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6 } }); //TODO
+	auto s = getStaticSamplers();
+	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
+}
+
+void App::createAOMissSignature(ID3D12RootSignature** pRootSig)
+{
+	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
@@ -441,6 +451,7 @@ void App::createRaytracingPipeline()
 
 	createRayGenSignature(&mSignatures["rayGen"]);
 	createMissSignature(&mSignatures["miss"]);
+	createAOMissSignature(&mSignatures["aoMiss"]);
 	createHitSignature(&mSignatures["closestHit"]);
 	createAOHitSignature(&mSignatures["aoClosestHit"]);
 	createShadowHitSignature(&mSignatures["shadowClosestHit"]);
@@ -450,7 +461,8 @@ void App::createRaytracingPipeline()
 	pipeline.AddHitGroup(L"ShadowHitGroup", L"ShadowClosestHit");
 
 	pipeline.AddRootSignatureAssociation(mSignatures["rayGen"].Get(), { L"RayGen" });
-	pipeline.AddRootSignatureAssociation(mSignatures["miss"].Get(), { L"Miss", L"AOMiss", L"ShadowMiss" });
+	pipeline.AddRootSignatureAssociation(mSignatures["miss"].Get(), { L"Miss" });
+	pipeline.AddRootSignatureAssociation(mSignatures["aoMiss"].Get(), { L"AOMiss", L"ShadowMiss" });
 	pipeline.AddRootSignatureAssociation(mSignatures["closestHit"].Get(), { L"HitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["aoClosestHit"].Get(), { L"AOHitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
@@ -471,7 +483,7 @@ void App::createShaderBindingTable()
 
 	mSBTHelper.Reset();
 	mSBTHelper.AddRayGenerationProgram(L"RayGen", { (void*) mCurrFrameResource->passCB->resource()->GetGPUVirtualAddress(), heapPointer });
-	mSBTHelper.AddMissProgram(L"Miss", {});
+	mSBTHelper.AddMissProgram(L"Miss", { heapPointer });
 	mSBTHelper.AddMissProgram(L"AOMiss", {});
 	mSBTHelper.AddMissProgram(L"ShadowMiss", {});
 
@@ -519,6 +531,10 @@ void App::loadTextures()
 	auto nmap2 = std::make_unique<Texture>();
 	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), L"res/textures/rough.dds", nmap2->Resource, nmap2->UploadHeap));
 	mNormalMap[1] = std::move(nmap2);
+
+	auto cmap = std::make_unique<Texture>();
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), L"res/textures/grasscube1024.dds", cmap->Resource, cmap->UploadHeap));
+	mCubemap = std::move(cmap);
 }
 
 void App::buildDescriptorHeap()
@@ -526,7 +542,7 @@ void App::buildDescriptorHeap()
 	if(!mHeap)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-		heapDesc.NumDescriptors = 6;
+		heapDesc.NumDescriptors = 7;
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
@@ -534,6 +550,7 @@ void App::buildDescriptorHeap()
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
 
+	//output buffer and accumulation buffer
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
@@ -555,11 +572,13 @@ void App::buildDescriptorHeap()
 	srvDesc.Texture2D.PlaneSlice = 0;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 
+	//wood texture
 	srvDesc.Format = mTexture->Resource->GetDesc().Format;
 	srvDesc.Texture2D.MipLevels = mTexture->Resource->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(mTexture->Resource.Get(), &srvDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 
+	//normal maps
 	srvDesc.Format = mNormalMap[0]->Resource->GetDesc().Format;
 	srvDesc.Texture2D.MipLevels = mNormalMap[0]->Resource->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(mNormalMap[0]->Resource.Get(), &srvDesc, hDescriptor);
@@ -568,6 +587,16 @@ void App::buildDescriptorHeap()
 	srvDesc.Format = mNormalMap[1]->Resource->GetDesc().Format;
 	srvDesc.Texture2D.MipLevels = mNormalMap[1]->Resource->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(mNormalMap[1]->Resource.Get(), &srvDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+	srvDesc.TextureCube.MostDetailedMip = 0;
+	srvDesc.TextureCube.ResourceMinLODClamp = 0.0F;
+
+	//cubemap
+	srvDesc.Format = mCubemap->Resource->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = mCubemap->Resource->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(mCubemap->Resource.Get(), &srvDesc, hDescriptor);
 }
 
 void App::buildFrameResources()
