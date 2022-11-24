@@ -90,7 +90,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 		float spotFactor = pow(max(dot(-lightDir, gLights[0].Direction), 0.0F), gLights[0].SpotPower);
 		float lightPower = (1.0F - diffuseAlbedo.a) * max(dot(-norm, lightDir), 0.0F) + (1.0F - data.roughness) * max(ldot, 0.0F);
 
-		if(data.reflectiveIndex > 0.01F || data.diffuseAlbedo.a < 0.97F)
+		if(data.metallic > 0.01F || data.diffuseAlbedo.a < 0.97F)
 			lightPower *= 0.7F;
 		else
 			lightPower *= 0.55F;
@@ -155,7 +155,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 	//reflections
 	float rayNormDot = dot(norm, -WorldRayDirection());
-	if(data.reflectiveIndex > 0.01F && payload.recursionDepth < 3)
+	if(data.metallic > 0.01F && payload.recursionDepth < 3)
 	{
 		float fresnelFactor;
 		if(data.diffuseAlbedo.a < 0.97F)
@@ -179,14 +179,14 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 		TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
 		
 		float distanceFactor = 1.0F - clamp(reflPayload.colorAndDistance.w / (1200 * shininess), 0.0F, 1.0F);
-		hitColor.rgb = lerp(hitColor.rgb, reflPayload.colorAndDistance.rgb, fresnelFactor * (1.0F - data.reflectiveIndex) * distanceFactor);
+		hitColor.rgb = lerp(hitColor.rgb, reflPayload.colorAndDistance.rgb, fresnelFactor * (1.0F - data.metallic) * distanceFactor);
 	}
 
 	//refraction
 	if(data.diffuseAlbedo.a < 0.97F && payload.recursionDepth < 3)
 	{
 		float fresnelFactor;
-		if(data.reflectiveIndex > 0.01F)
+		if(data.metallic > 0.01F)
 			fresnelFactor = 1.0F - clamp((1.0F - rayNormDot), 0.0F, 1.0F);
 		else
 			fresnelFactor = 1.0F - clamp((1.0F - rayNormDot) * data.fresnelPower, 0.0F, 1.0F);

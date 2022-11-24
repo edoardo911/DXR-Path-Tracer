@@ -37,7 +37,7 @@ namespace RT
 		DirectX::XMFLOAT3 fresnelR0;
 		float fresnelPower = 0.0F;
 		float roughness = 0.1F;
-		float reflectiveIndex = 0.0F;
+		float metallic = 0.0F;
 		float refractionIndex = 1.0F;
 		UINT32 flags = 0x00000000;
 	};

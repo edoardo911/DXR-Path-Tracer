@@ -60,7 +60,7 @@ struct MaterialData
     float3 fresnelR0;
     float fresnelPower;
     float roughness;
-    float reflectiveIndex;
+    float metallic;
     float refractionIndex;
     int flags;
 };

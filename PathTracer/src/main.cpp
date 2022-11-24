@@ -300,7 +300,7 @@ void App::buildMaterials()
 
 	auto metallicBall = std::make_unique<Material>();
 	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.1F };
-	metallicBall->reflectiveIndex = 0.05F;
+	metallicBall->metallic = 0.05F;
 	metallicBall->matCBIndex = 3;
 	mMaterials.push_back(std::move(metallicBall));
 }
@@ -740,7 +740,7 @@ void App::updateMaterialCBs()
 			matCB.fresnelR0 = m->FresnelR0;
 			matCB.fresnelPower = m->fresnelPower;
 			matCB.roughness = m->Roughness;
-			matCB.reflectiveIndex = m->reflectiveIndex;
+			matCB.metallic = m->metallic;
 			matCB.refractionIndex = m->refractionIndex;
 			matCB.flags = m->flags;
 
