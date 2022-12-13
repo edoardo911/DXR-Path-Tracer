@@ -46,7 +46,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 	MaterialData data = gMaterials[gMatIndex];
 
-	//TEMP
+	//******** TEMP ********//
 
 	//global var
 	const float4 gAmbientLight = float4(0.2F, 0.2F, 0.2F, 1.0F);
@@ -61,7 +61,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	gLights[0].FalloffEnd = 10.0F;
 	gLights[0].SpotPower = 1.0F;
 
-	//TEMP
+	//******** TEMP ********//
 	
 	//diffuse albedo
 	float4 mapColor = float4(1.0F, 1.0F, 1.0F, 1.0F);
@@ -113,7 +113,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	reflRay.TMin = 0.01F;
 	reflRay.TMax = 1.5F;
 	
-	TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
+    TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
 	if(reflPayload.colorAndDistance.a > 0.0F)
 		indirectLight = reflPayload.colorAndDistance.rgb * min(3.5F / reflPayload.colorAndDistance.a, 1.0F);
 

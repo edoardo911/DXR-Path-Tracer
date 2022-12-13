@@ -144,6 +144,7 @@
     <ClCompile Include="src\utils\D3DUtil.cpp" />
     <ClCompile Include="src\utils\GeometryGenerator.cpp" />
     <ClCompile Include="src\utils\MathUtil.cpp" />
+    <ClCompile Include="src\utils\ModelLoader.cpp" />
     <ClCompile Include="src\utils\TextureLoader.cpp" />
     <ClCompile Include="src\utils\Timer.cpp" />
   </ItemGroup>
@@ -165,6 +166,7 @@
     <ClInclude Include="src\utils\GeometryGenerator.h" />
     <ClInclude Include="src\utils\header.h" />
     <ClInclude Include="src\utils\MathUtil.h" />
+    <ClInclude Include="src\utils\ModelLoader.h" />
     <ClInclude Include="src\utils\settings.h" />
     <ClInclude Include="src\utils\TextureLoader.h" />
     <ClInclude Include="src\utils\Timer.h" />

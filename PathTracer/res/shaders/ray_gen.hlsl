@@ -17,7 +17,7 @@ void RayGen()
 {
 	uint2 launchIndex = DispatchRaysIndex().xy;
 	float2 dims = float2(DispatchRaysDimensions().xy);
-	float2 d = ((launchIndex + 0.5F) / dims) * 2.0F - 1.0F;
+	float2 d = (launchIndex / dims) * 2.0F - 1.0F;
 
 	RayDesc ray;
 	ray.Origin = mul(gInvView, float4(0, 0, 0, 1));

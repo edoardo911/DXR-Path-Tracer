@@ -42,10 +42,7 @@ namespace RT
 				mFrameTime = 1.0 / settings.fps;
 		}
 
-		inline void toggleCursor(bool active) const
-		{
-			ShowCursor(active);
-		}
+		inline void toggleCursor(bool active) const { ShowCursor(active); }
 
 		void centerCursor();
 
@@ -78,8 +75,6 @@ namespace RT
 		static const int swapChainBufferCount = 2;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffers[swapChainBufferCount];
 
-		D3D_DRIVER_TYPE md3dDriverType = D3D_DRIVER_TYPE_HARDWARE;
-
 		HINSTANCE mWindowInst = nullptr;
 
 		int mCurrBackBuffer = 0;
@@ -105,6 +100,7 @@ namespace RT
 		Mouse mouse{};
 
 		settings_struct settings{};
+
 		float mFPS = 0;
 		float percUsedVMem = 0;
 		float mbsUsed = 0;

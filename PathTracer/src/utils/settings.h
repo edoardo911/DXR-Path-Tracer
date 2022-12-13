@@ -28,6 +28,8 @@ namespace RT
 		DXGI_FORMAT backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 		std::wstring title = L"Ray Tracing";
+	protected:
+		settings_struct() = default;
 
 		void saveSize()
 		{
@@ -40,8 +42,6 @@ namespace RT
 			width = lastW;
 			height = lastH;
 		}
-	protected:
-		settings_struct() = default;
 
 		UINT32 lastW = 1280;
 		UINT32 lastH = 720;

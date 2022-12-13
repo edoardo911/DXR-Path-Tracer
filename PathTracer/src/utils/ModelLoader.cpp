@@ -2,7 +2,7 @@
 
 using namespace DirectX;
 
-namespace Regi
+namespace RT
 {
 	void ModelLoader::calcTangents(const std::vector<UINT32>& indices, std::vector<Vertex>& vertices)
 	{
@@ -124,6 +124,8 @@ namespace Regi
 
 			calcTangents(mesh.indices32, mesh.vertices);
 		}
+		else
+			throw std::exception(std::string("The file " + filePath + " does not exist").c_str());
 
 		return mesh;
 	}

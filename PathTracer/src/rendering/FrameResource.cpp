@@ -14,5 +14,7 @@ namespace RT
 	FrameResource::~FrameResource()
 	{
 		passCB.reset();
+		objCB.reset();
+		matCB.reset();
 	}
 }

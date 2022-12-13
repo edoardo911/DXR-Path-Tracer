@@ -1,7 +1,7 @@
 #pragma once
 #include "../rendering/FrameResource.h"
 
-namespace Regi
+namespace RT
 {
 	class ModelLoader
 	{

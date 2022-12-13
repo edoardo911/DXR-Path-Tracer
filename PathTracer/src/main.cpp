@@ -124,7 +124,7 @@ int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance, 
 	}
 	catch(DxException e)
 	{
-		MessageBox(nullptr, e.ToString().c_str(), L"DirectX Exception", MB_OK);
+		MessageBox(0, e.ToString().c_str(), L"DirectX Exception", MB_OK);
 		return -1;
 	}
 	catch(std::exception e)

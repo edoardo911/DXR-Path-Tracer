@@ -123,7 +123,7 @@ namespace RT
 			settings.backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 			getDisplayMode();
 			if(mFullscreenMode.Width == 0)
-				throw std::exception("No compatibile fullscreen modes");
+				throw std::exception("No compatible fullscreen modes");
 		}
 		createSwapChain();
 		onResize();
