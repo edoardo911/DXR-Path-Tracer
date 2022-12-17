@@ -42,7 +42,7 @@ namespace RT
 		INT32 texOffset = -1;
 		INT32 normOffset = -1;
 		UINT matOffset = 0;
-		int objCBOffset = 0;
+		UINT objCBOffset = 0;
 		int numFramesDirty = NUM_FRAME_RESOURCES;
 
 		InstanceData* buffers = nullptr;

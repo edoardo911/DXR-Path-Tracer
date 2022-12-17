@@ -50,7 +50,6 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 	//global var
 	const float4 gAmbientLight = float4(0.2F, 0.2F, 0.2F, 1.0F);
-	const float3 fresnelR0 = float3(0.1F, 0.1F, 0.1F);
 
 	//lights
 	Light gLights[16];
@@ -124,15 +123,13 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 	//shadows
 	float maxDist = gLights[0].FalloffEnd + gLights[0].FalloffStart;
-	float d = 0;
 
 	float3 lightSphereDirection = calcShadowDirectionSL(worldOrigin, gLights[0].Direction, gLights[0].Position, lightRadius, seed);
+	float d = length(lightSphereDirection);
 
 	RayDesc ray;
 	ray.Origin = worldOrigin;
 	ray.Direction = normalize(lightSphereDirection);
-	d = length(lightSphereDirection);
-
 	ray.TMin = 0.01F;
 	ray.TMax = d;
 
@@ -207,7 +204,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 		TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, refrRay, refrPayload);
 		
-		float distanceFactor = 1.0F - clamp(reflPayload.colorAndDistance.w / max(500 * diffuseAlbedo.a, 40.0F), 0.0F, 1.0F);
+		float distanceFactor = 1.0F - clamp(refrPayload.colorAndDistance.w / max(500 * diffuseAlbedo.a, 40.0F), 0.0F, 1.0F);
 		hitColor.rgb = lerp(hitColor.rgb, refrPayload.colorAndDistance.rgb, visibility * fresnelFactor * distanceFactor);
 	}
 
@@ -216,17 +213,16 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
 	RayDesc aoRay;
 	aoRay.Origin = worldOrigin;
-	aoRay.Direction = normalize(float3(nextRand(seed), nextRand(seed), nextRand(seed)) * 2.0F - 1.0F);
+    aoRay.Direction = calcRTAODirection(norm, tangent, seed);
 	aoRay.TMin = 0.001F;
 	aoRay.TMax = 0.071F;
 
 	AOHitInfo aoPayload;
 	aoPayload.isHit = false;
-	aoPayload.instanceID = InstanceID();
 
-	TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, aoRay, aoPayload);
+    TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, aoRay, aoPayload);
 	if(aoPayload.isHit)
-		occlusion = 0.0F;
+		occlusion = 0.1F;
 
 	hitColor.rgb *= occlusion;
 

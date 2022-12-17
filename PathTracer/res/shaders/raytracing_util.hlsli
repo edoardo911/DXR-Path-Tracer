@@ -1,7 +1,30 @@
-#include "common.hlsl"
+#pragma once
 
+//random
+uint initRand(uint val0, uint val1, uint backoff = 16)
+{
+    uint v0 = val0, v1 = val1, s0 = 0;
+
+    [unroll]
+    for (uint n = 0; n < backoff; n++)
+    {
+        s0 += 0x9e3779b9;
+        v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
+        v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + s0) ^ ((v0 >> 5) + 0x7e95761e);
+    }
+    return v0;
+}
+
+float nextRand(inout uint s)
+{
+    s = (1664525u * s + 1013904223u);
+    return float(s & 0x00FFFFFF) / float(0x01000000);
+}
+
+//constants
 const static float3 wRight = float3(1.0F, 0.0F, 0.0F);
 
+//path tracing directions
 float3 calcShadowDirectionSL(float3 worldOrigin, float3 lightDir, float3 lightPos, float lightRadius, uint seed)
 {
 	float3 lFront = cross(lightDir, wRight);
@@ -40,4 +63,14 @@ float3 calcRefractionDirection(float3 rayDir, float3 normal, float refractionInd
 	rv *= float3(roughness / 10.0F, 1.0F, roughness / 10.0F);
 
 	return mul(rv, RFU);
+}
+
+float3 calcRTAODirection(float3 norm, float3 tangent, uint seed)
+{
+    float3 N = norm;
+    float3 T = normalize(tangent - dot(tangent, N) * N);
+    float3 B = cross(N, T);
+    float3x3 TNB = float3x3(T, N, B);
+	
+    return normalize(mul(TNB, float3(nextRand(seed) * 2.0F - 1.0F, 1.0F, nextRand(seed) * 2.0F - 1.0F)));
 }
