@@ -39,11 +39,12 @@ namespace RT
 
 		DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
 		DirectX::XMMATRIX texTransform = DirectX::XMMatrixIdentity();
+		int numFramesDirty = NUM_FRAME_RESOURCES;
+
 		INT32 texOffset = -1;
-		INT32 normOffset = -1;
+		INT32 normalOffset = -1;
 		UINT matOffset = 0;
 		UINT objCBOffset = 0;
-		int numFramesDirty = NUM_FRAME_RESOURCES;
 
 		InstanceData* buffers = nullptr;
 		ObjectType type = OBJECT_TYPE_NORMAL;

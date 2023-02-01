@@ -108,7 +108,7 @@ namespace RT
 
 							v.pos = positions[std::stoi(token.substr(0, token.find("/"))) - 1];
 							token = token.substr(token.find("/") + 1, token.size());
-							v.uvs = uvs[std::stoi(token.substr(0, token.find("/"))) - 1];
+							//v.uvs = uvs[std::stoi(token.substr(0, token.find("/"))) - 1];
 							token = token.substr(token.find("/") + 1, token.size());
 							v.normal = normals[std::stoi(token) - 1];
 

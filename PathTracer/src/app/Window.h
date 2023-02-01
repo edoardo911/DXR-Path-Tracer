@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../utils/D3DUtil.h"
+#include "../utils/header.h"
 
 #include "../utils/Timer.h"
 
@@ -15,7 +15,7 @@ namespace RT
 		inline static Window* getWindow() { return mWindow; }
 		inline HINSTANCE windowInst() const { return mWindowInst; }
 		inline HWND mainWin() const { return mMainWin; }
-		inline float aspectRatio() const { return static_cast<float>(settings.width) / static_cast<float>(settings.height); }
+		inline float aspectRatio() const { return static_cast<float>(settings.width) / settings.height; }
 
 		virtual ~Window();
 

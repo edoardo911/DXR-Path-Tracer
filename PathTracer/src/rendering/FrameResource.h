@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../utils/D3DUtil.h"
 #include "../utils/UploadBuffer.h"
 
 namespace RT
@@ -13,10 +12,34 @@ namespace RT
 		DirectX::XMFLOAT3 tangent;
 	};
 
+    struct Material
+    {
+        std::string Name;
+        int NumFramesDirty = NUM_FRAME_RESOURCES;
+        DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 1.0F };
+        DirectX::XMFLOAT3 FresnelR0 = { 0.1F, 0.1F, 0.1F };
+        float fresnelPower = 0.0F;
+        float Roughness = 0.1F;
+        float metallic = 0.0F;
+        float refractionIndex = 1.0F;
+        UINT32 matCBIndex = 0;
+        UINT32 flags = 0;
+    };
+
+	struct Texture
+	{
+		std::string Name;
+		std::wstring Filename;
+		Microsoft::WRL::ComPtr<ID3D12Resource> Resource = nullptr;
+		Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
+	};
+
 	struct MainPass
 	{
 		DirectX::XMFLOAT4X4 invView;
 		DirectX::XMFLOAT4X4 invProj;
+		float fov;
+		float aspectRatio;
 		UINT32 frameIndex = 1;
 	};
 

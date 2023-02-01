@@ -1,4 +1,4 @@
-#include "common.hlsl"
+#include "common.hlsli"
 
 [shader("closesthit")]
 void AOClosestHit(inout AOHitInfo payload, Attributes attrib)

@@ -1,6 +1,6 @@
 #pragma once
 
-//win32
+//win32 libraries
 #include <WindowsX.h>
 #include <wrl.h>
 
@@ -29,13 +29,12 @@
 #include <cassert>
 #include <fstream>
 #include <sstream>
-#include <string>
+#include <vector>
 #include <memory>
+#include <string>
 #include <array>
-#include <ppl.h>
 
-//engine libraries
-#include "TextureLoader.h"
+#include "d3dutil.h"
 #include "settings.h"
 
 //macros
@@ -43,7 +42,7 @@
 	#define ThrowIfFailed(x)													\
 	{																			\
 		HRESULT hr__ = (x);														\
-		std::wstring wfn = RT::AnsiToWString(__FILE__);						\
+		std::wstring wfn = RT::AnsiToWString(__FILE__);							\
 		if(FAILED(hr__)) { throw RT::DxException(hr__, L#x, wfn, __LINE__); }	\
 	}
 #endif

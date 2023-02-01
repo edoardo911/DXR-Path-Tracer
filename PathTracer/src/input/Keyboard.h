@@ -4,12 +4,8 @@
 
 //https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 #define KEY_A 0x41
-#define KEY_B 0x42
 #define KEY_D 0x44
-#define KEY_I 0x49
-#define KEY_R 0x52
 #define KEY_S 0x53
-#define KEY_T 0x54
 #define KEY_W 0x57
 #define KEY_0 0x30
 #define KEY_1 0x31

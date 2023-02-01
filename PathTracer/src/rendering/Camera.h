@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../utils/MathUtil.h"
+#include "../utils/header.h"
 
 namespace RT
 {
 	class Camera
 	{
 	public:
-		inline Camera(float aspectRatio) { setLens(0.25F * MathUtil::pi, aspectRatio, 1.0F, 1000.0F); }
+		inline Camera(float aspectRatio) { setLens(0.25F * DirectX::XM_PI, aspectRatio, 1.0F, 1000.0F); }
 		~Camera() = default;
 
 		void setPos(float, float, float);
@@ -69,7 +69,7 @@ namespace RT
 
 		bool mViewDirty = true;
 
-		DirectX::XMFLOAT4X4 mView = MathUtil::Identity4x4();
-		DirectX::XMFLOAT4X4 mProj = MathUtil::Identity4x4();
+		DirectX::XMFLOAT4X4 mView = Identity4x4();
+		DirectX::XMFLOAT4X4 mProj = Identity4x4();
 	};
 };

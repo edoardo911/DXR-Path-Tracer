@@ -15,13 +15,7 @@ namespace RT
 		mWindow = this;
 	}
 
-	Window::~Window()
-	{
-		if(md3dDevice)
-			flushCommandQueue();
-		if(mSwapChain && settings.fullscreen)
-			mSwapChain->SetFullscreenState(FALSE, NULL);
-	}
+	Window::~Window() {}
 
 	bool Window::initialize()
 	{
@@ -29,12 +23,6 @@ namespace RT
 			return false;
 		if(!initDirectX12())
 			return false;
-
-		if(settings.fullscreen)
-		{
-			mSwapChain->SetFullscreenState(TRUE, NULL);
-			mSwapChain->ResizeTarget(&mFullscreenMode);
-		}
 		return true;
 	}
 
@@ -63,7 +51,7 @@ namespace RT
 		int width = R.right - R.left;
 		int height = R.bottom - R.top;
 
-		mMainWin = CreateWindow(L"MainWnd", settings.title.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, mWindowInst, 0);
+		mMainWin = CreateWindow(L"MainWnd", settings.name.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, mWindowInst, 0);
 		if(!mMainWin)
 		{
 			MessageBox(0, L"CreateWindow Failed.", 0, 0);
@@ -110,11 +98,6 @@ namespace RT
 		ThrowIfFailed(md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &rtOptions, sizeof(rtOptions)));
 		if(rtOptions.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 			throw std::exception("Ray tracing not supported");
-
-		D3D12_FEATURE_DATA_D3D12_OPTIONS7 msOptions = {};
-		ThrowIfFailed(md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &msOptions, sizeof(msOptions)));
-		if(msOptions.MeshShaderTier == D3D12_MESH_SHADER_TIER_NOT_SUPPORTED)
-			throw std::exception("Mesh shaders not supported");
 
 		createCommandObjects();
 		getDisplayMode();
@@ -192,9 +175,7 @@ namespace RT
 					if(counter > mFrameTime)
 					{
 						counter -= mFrameTime;
-					#ifdef _DEBUG
 						calculateFrameStats();
-					#endif
 						if(!mFrameInExecution)
 							draw();
 					}
@@ -336,7 +317,7 @@ namespace RT
 		if((mTimer.totalTime() - timeElapsed) >= 1.0F)
 		{
 			mFPS = (float) frameCnt;
-			float mspf = 1000.0F / mFPS;
+			//float mspf = 1000.0F / mFPS;
 
 			frameCnt = 0;
 			timeElapsed += 1.0F;

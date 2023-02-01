@@ -1,10 +1,11 @@
-#include "utils/D3DUtil.h"
+#include "utils/header.h"
 
+#include "app/RaytracingInstance.h"
 #include "app/Window.h"
 
 #include "utils/GeometryGenerator.h"
+#include "utils/TextureLoader.h"
 
-#include "rendering/RaytracingInstance.h"
 #include "rendering/FrameResource.h"
 #include "rendering/Camera.h"
 
@@ -68,7 +69,7 @@ private:
 
 	void buildFrameResources();
 
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 2> getStaticSamplers();
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 3> getStaticSamplers();
 
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;
@@ -150,11 +151,12 @@ App::~App()
 		flushCommandQueue();
 }
 
-std::array<const CD3DX12_STATIC_SAMPLER_DESC, 2> App::getStaticSamplers()
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 3> App::getStaticSamplers()
 {
 	const CD3DX12_STATIC_SAMPLER_DESC pointWrap(0, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 	const CD3DX12_STATIC_SAMPLER_DESC bilinearWrap(1, D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
-	return { pointWrap, bilinearWrap };
+	const CD3DX12_STATIC_SAMPLER_DESC trilinearWrap(2, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
+	return { pointWrap, bilinearWrap, trilinearWrap };
 }
 
 bool App::initialize()
@@ -178,6 +180,7 @@ bool App::initialize()
 	loadTextures();
 	buildDescriptorHeap();
 	buildFrameResources();
+	createShaderBindingTable();
 
 	ThrowIfFailed(mCommandList->Close());
 
@@ -260,7 +263,7 @@ void App::buildInstances()
 
 	auto s1 = std::make_unique<RaytracingInstance>(mGeometries["sphere"].get());
 	s1->objCBOffset = 1;
-	s1->normOffset = 1;
+	s1->normalOffset = 1;
 	s1->world = XMMatrixTranslation(-1.0F, 0.01F, 1.0F);
 	s1->matOffset = 1;
 	mRTInstances.push_back(std::move(s1));
@@ -268,7 +271,7 @@ void App::buildInstances()
 	auto floor = std::make_unique<RaytracingInstance>(mGeometries["grid"].get());
 	floor->objCBOffset = 2;
 	floor->texOffset = 0;
-	floor->normOffset = 0;
+	floor->normalOffset = 0;
 	floor->world = XMMatrixTranslation(0.0F, -0.5F, -1.5F);
 	mRTInstances.push_back(std::move(floor));
 
@@ -300,7 +303,7 @@ void App::buildMaterials()
 
 	auto metallicBall = std::make_unique<Material>();
 	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.1F };
-	metallicBall->metallic = 0.05F;
+	metallicBall->metallic = 0.8F;
 	metallicBall->matCBIndex = 3;
 	mMaterials.push_back(std::move(metallicBall));
 }
@@ -348,11 +351,6 @@ void App::createTopLevelAS(const std::vector<std::tuple<Microsoft::WRL::ComPtr<I
 	for(size_t i = 0; i < instances.size(); ++i)
 	{
 		const auto& [res, world, type] = instances[i];
-		//if(type == OBJECT_TYPE_PLANE)
-		//	mTopLevelASGenerator.AddInstance(res.Get(), world, static_cast<UINT>(i), static_cast<UINT>(i), 0x01);
-		//else if(type == OBJECT_TYPE_WATER)
-		//	mTopLevelASGenerator.AddInstance(res.Get(), world, static_cast<UINT>(i), static_cast<UINT>(i), 0x02);
-		//else
 		mTopLevelASGenerator.AddInstance(res.Get(), world, static_cast<UINT>(i), static_cast<UINT>(i * 3), 0xFF);
 	}
 
@@ -480,42 +478,42 @@ void App::createShaderBindingTable()
 	D3D12_GPU_DESCRIPTOR_HANDLE heapHandle = mHeap->GetGPUDescriptorHandleForHeapStart();
 
 	UINT64* heapPointer = reinterpret_cast<UINT64*>(heapHandle.ptr);
+	UINT objCBSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
-	mSBTHelper.Reset();
-	mSBTHelper.AddRayGenerationProgram(L"RayGen", { (void*) mCurrFrameResource->passCB->resource()->GetGPUVirtualAddress(), heapPointer });
-	mSBTHelper.AddMissProgram(L"Miss", { heapPointer });
-	mSBTHelper.AddMissProgram(L"AOMiss", {});
-	mSBTHelper.AddMissProgram(L"ShadowMiss", {});
-
-	UINT objCBSize = D3DUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-	for(auto& i:mRTInstances)
+	for(int j = 0; j < NUM_FRAME_RESOURCES; ++j)
 	{
-		auto objCB = mCurrFrameResource->objCB->resource();
-		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCB->GetGPUVirtualAddress() + i->objCBOffset * objCBSize;
+		mSBTHelper.Reset();
+		mSBTHelper.AddRayGenerationProgram(L"RayGen", { (void*) mFrameResources[j]->passCB->resource()->GetGPUVirtualAddress(), heapPointer });
+		mSBTHelper.AddMissProgram(L"Miss", {});
+		mSBTHelper.AddMissProgram(L"ShadowMiss", {});
+		mSBTHelper.AddMissProgram(L"AOMiss", {});
 
-		mSBTHelper.AddHitGroup(L"HitGroup", {
-								(void*) mCurrFrameResource->passCB->resource()->GetGPUVirtualAddress(),
-								(void*) objCBAddress,
-								(void*) (i->buffers->vertexBuffer->GetGPUVirtualAddress()),
-								(void*) (i->buffers->indexBuffer->GetGPUVirtualAddress()),
-								(void*) (mCurrFrameResource->matCB->resource()->GetGPUVirtualAddress()),
-								heapPointer
-							   });
-		mSBTHelper.AddHitGroup(L"AOHitGroup", {
-								(void*) mCurrFrameResource->passCB->resource()->GetGPUVirtualAddress(),
-								heapPointer
-							   });
-		mSBTHelper.AddHitGroup(L"ShadowHitGroup", {
-								(void*) objCBAddress,
-								(void*) (mCurrFrameResource->matCB->resource()->GetGPUVirtualAddress())
-							   });
+		for(auto& i : mRTInstances)
+		{
+			auto objCB = mFrameResources[j]->objCB->resource();
+			D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCB->GetGPUVirtualAddress() + i->objCBOffset * objCBSize;
+
+			mSBTHelper.AddHitGroup(L"HitGroup", {
+									(void*) mFrameResources[j]->passCB->resource()->GetGPUVirtualAddress(),
+									(void*) objCBAddress,
+									(void*) (i->buffers->vertexBuffer->GetGPUVirtualAddress()),
+									(void*) (i->buffers->indexBuffer->GetGPUVirtualAddress()),
+									(void*) (mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress()),
+									heapPointer
+								   });
+			mSBTHelper.AddHitGroup(L"ShadowHitGroup", {
+									(void*) objCBAddress,
+									(void*) (mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress())
+								   });
+			mSBTHelper.AddHitGroup(L"AOHitGroup", {});
+		}
+
+		UINT32 sbtSize0 = mSBTHelper.ComputeSBTSize();
+		nv_helpers_dx12::CreateBuffer(md3dDevice.Get(), sbtSize0, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps, mFrameResources[j]->SBTStorage);
+		if(!mFrameResources[j]->SBTStorage)
+			throw std::exception("Could not allocate shader binding table");
+		mSBTHelper.Generate(mFrameResources[j]->SBTStorage.Get(), mRtStateObjectProps.Get());
 	}
-
-	UINT32 sbtSize0 = mSBTHelper.ComputeSBTSize();
-	nv_helpers_dx12::CreateBuffer(md3dDevice.Get(), sbtSize0, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps, mCurrFrameResource->SBTStorage);
-	if(!mCurrFrameResource->SBTStorage)
-		throw std::exception("Could not allocate shader binding table");
-	mSBTHelper.Generate(mCurrFrameResource->SBTStorage.Get(), mRtStateObjectProps.Get());
 }
 
 void App::loadTextures()
@@ -641,7 +639,6 @@ void App::draw()
 
 	ID3D12DescriptorHeap* heaps[] = { mHeap.Get() };
 	mCommandList->SetDescriptorHeaps(1, heaps);
-	createShaderBindingTable();
 
 	auto mSBTStorage = mCurrFrameResource->SBTStorage;
 
@@ -706,8 +703,11 @@ void App::updateMainPassCB()
 
 		XMStoreFloat4x4(&mMainPassCB.invView, invView);
 		XMStoreFloat4x4(&mMainPassCB.invProj, invProj);
+
+		mMainPassCB.fov = 0.25F * XM_PI;
+		mMainPassCB.aspectRatio = aspectRatio();
 	}
-	
+
 	mCurrFrameResource->passCB->copyData(0, mMainPassCB);
 }
 
@@ -719,9 +719,9 @@ void App::updateObjCBs()
 		{
 			ObjectConstants objCB;
 			XMStoreFloat4x4(&objCB.world, XMMatrixTranspose(e->world));
-			objCB.diffuseIndex = e->texOffset;
-			objCB.normalIndex = e->normOffset;
 			objCB.materialIndex = e->matOffset;
+			objCB.diffuseIndex = e->texOffset;
+			objCB.normalIndex = e->normalOffset;
 
 			mCurrFrameResource->objCB->copyData(e->objCBOffset, objCB);
 			e->numFramesDirty--;
@@ -754,7 +754,7 @@ void App::onResize()
 {
 	Window::onResize();
 
-	mCam->setLens(0.25F * MathUtil::pi, aspectRatio(), 0.01F, 10000.0F);
+	mCam->setLens(0.25F * XM_PI, aspectRatio(), 0.01F, 10000.0F);
 	mMainPassCB.frameIndex = 1;
 
 	if(mOutputResource[0])
@@ -778,7 +778,7 @@ void App::keyboardInput()
 	if(keyboard.isKeyDown(KEY_D))
 		mCam->strafe(speed * dt);
 
-	if(keyboard.isKeyPressed(KEY_B))
+	if(keyboard.isKeyPressed(VK_CONTROL))
 	{
 		settings.fps = 0;
 		resetFPS();

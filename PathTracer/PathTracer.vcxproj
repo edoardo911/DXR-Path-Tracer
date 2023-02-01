@@ -129,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\app\RaytracingInstance.cpp" />
     <ClCompile Include="src\app\Window.cpp" />
     <ClCompile Include="src\input\Keyboard.cpp" />
     <ClCompile Include="src\input\Mouse.cpp" />
@@ -140,8 +141,6 @@
     <ClCompile Include="src\raytracing\TopLevelASGenerator.cpp" />
     <ClCompile Include="src\rendering\Camera.cpp" />
     <ClCompile Include="src\rendering\FrameResource.cpp" />
-    <ClCompile Include="src\rendering\RaytracingInstance.cpp" />
-    <ClCompile Include="src\utils\D3DUtil.cpp" />
     <ClCompile Include="src\utils\GeometryGenerator.cpp" />
     <ClCompile Include="src\utils\MathUtil.cpp" />
     <ClCompile Include="src\utils\ModelLoader.cpp" />
@@ -149,6 +148,7 @@
     <ClCompile Include="src\utils\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\app\RaytracingInstance.h" />
     <ClInclude Include="src\app\Window.h" />
     <ClInclude Include="src\input\Keyboard.h" />
     <ClInclude Include="src\input\Mouse.h" />
@@ -160,8 +160,7 @@
     <ClInclude Include="src\raytracing\TopLevelASGenerator.h" />
     <ClInclude Include="src\rendering\Camera.h" />
     <ClInclude Include="src\rendering\FrameResource.h" />
-    <ClInclude Include="src\rendering\RaytracingInstance.h" />
-    <ClInclude Include="src\utils\D3DUtil.h" />
+    <ClInclude Include="src\utils\d3dutil.h" />
     <ClInclude Include="src\utils\d3dx12.h" />
     <ClInclude Include="src\utils\GeometryGenerator.h" />
     <ClInclude Include="src\utils\header.h" />

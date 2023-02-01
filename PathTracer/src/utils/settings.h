@@ -20,14 +20,14 @@ namespace RT
 	public:
 		UINT32 width = 1280;
 		UINT32 height = 720;
-		UINT32 fps = 60;
+		UINT8 fps = 60;
 
-		bool fullscreen = false;
 		bool vSync = false;
+		bool fullscreen = false;
 
 		DXGI_FORMAT backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-		std::wstring title = L"Ray Tracing";
+		std::wstring name = L"Path Tracing";
 	protected:
 		settings_struct() = default;
 

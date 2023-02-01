@@ -1,19 +1,13 @@
 #pragma once
 
 #define MAX_LIGHTS 16
-#define MAX_IMAGES 0
-#define MAX_NORMAL_MAPS 0
+#define MAX_RECURSION_DEPTH 3
 
 //payloads
 struct HitInfo
 {
-	float4 colorAndDistance;
+    float4 colorAndDistance;
     uint recursionDepth;
-};
-
-struct AOHitInfo
-{
-    bool isHit;
 };
 
 struct ShadowHitInfo
@@ -22,25 +16,23 @@ struct ShadowHitInfo
     float distance;
 };
 
+struct AOHitInfo
+{
+    bool isHit;
+};
+
 //other structs
 struct Attributes
 {
-	float2 bary;
+    float2 bary;
 };
 
 struct Vertex
 {
-	float3 pos;
-	float2 uvs;
-	float3 normal;
-	float3 tangent;
-};
-
-struct Material
-{
-	float4 DiffuseAlbedo;
-	float3 FresnelR0;
-	float Shininess;
+    float3 pos;
+    float2 uvs;
+    float3 normal;
+    float3 tangent;
 };
 
 struct Light
@@ -51,9 +43,17 @@ struct Light
     float FalloffEnd;
     float3 Position;
     float SpotPower;
+    float Radius;
 };
 
-struct MaterialData
+struct LightMaterial
+{
+    float4 DiffuseAlbedo;
+    float3 FresnelR0;
+    float Shininess;
+};
+
+struct Material
 {
     float4 diffuseAlbedo;
     float3 fresnelR0;
@@ -78,7 +78,7 @@ float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
     return reflectPercent;
 }
 
-float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat)
+float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, LightMaterial mat)
 {
     const float m = mat.Shininess * 256.0F;
     float3 halfVec = normalize(toEye + lightVec);
@@ -92,7 +92,7 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
     return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;
 }
 
-float3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEye)
+float3 ComputeDirectionalLight(Light L, LightMaterial mat, float3 normal, float3 toEye)
 {
     float3 lightVec = -L.Direction;
 
@@ -102,12 +102,12 @@ float3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEy
     return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
 }
 
-float3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)
+float3 ComputePointLight(Light L, LightMaterial mat, float3 pos, float3 normal, float3 toEye)
 {
     float3 lightVec = L.Position - pos;
     float d = length(lightVec);
 
-    if(d > L.FalloffEnd)
+    if (d > L.FalloffEnd)
         return 0.0F;
 
     lightVec /= d;
@@ -121,12 +121,12 @@ float3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float
     return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
 }
 
-float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)
+float3 ComputeSpotLight(Light L, LightMaterial mat, float3 pos, float3 normal, float3 toEye)
 {
     float3 lightVec = L.Position - pos;
     float d = length(lightVec);
 
-    if(d > L.FalloffEnd)
+    if (d > L.FalloffEnd)
         return 0.0F;
 
     lightVec /= d;
@@ -147,7 +147,7 @@ float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3
 #define NUM_POINT_LIGHTS 0
 #define NUM_SPOT_LIGHTS 1
 
-float4 ComputeLighting(Light gLights[MAX_LIGHTS], Material mat, float3 pos, float3 normal, float3 toEye, float3 shadowFactor)
+float4 ComputeLighting(Light gLights[MAX_LIGHTS], LightMaterial mat, float3 pos, float3 normal, float3 toEye, float3 shadowFactor)
 {
     float3 result = 0.0F;
     int i = 0;
@@ -159,7 +159,7 @@ float4 ComputeLighting(Light gLights[MAX_LIGHTS], Material mat, float3 pos, floa
 
 #if (NUM_POINT_LIGHTS > 0)
     for(i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; ++i)
-        result += ComputePointLight(gLights[i], mat, pos, normal, toEye);
+        result += shadowFactor[i] * ComputePointLight(gLights[i], mat, pos, normal, toEye);
 #endif
 
 #if (NUM_SPOT_LIGHTS > 0)
