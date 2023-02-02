@@ -143,7 +143,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     #if (NUM_DIR_LIGHTS > 0)
         for(i = 0; i < NUM_DIR_LIGHTS; ++i)
         {
-            float ldot = dot(norm, -gLights[i].Direction);
+            float ldot = diffuseAlbedo.a < 0.97F ? dot(-norm, -gLights[i].Direction) : dot(norm, -gLights[i].Direction);
             float lightPower = (1.0F - diffuseAlbedo.a) * max(dot(-norm, -gLights[i].Direction), 0.0F) + (1.0F - material.roughness) * max(ldot, 0.0F);
 
             if(material.metallic > 0.01F || diffuseAlbedo.a < 0.97F)
@@ -159,7 +159,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         for(i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; ++i)
         {
             float3 lightDir = normalize(gLights[i].Position - worldOrigin);
-            float ldot = dot(norm, lightDir);
+            float ldot = diffuseAlbedo.a < 0.97F ? dot(-norm, lightDir) : dot(norm, lightDir);
             float lightPower = (1.0F - diffuseAlbedo.a) * max(dot(-norm, lightDir), 0.0F) + (1.0F - material.roughness) * max(ldot, 0.0F);
 
             if(material.metallic > 0.01F || diffuseAlbedo.a < 0.97F)
@@ -175,8 +175,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         for(i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
         {
             float3 lightDir = normalize(gLights[i].Position - worldOrigin);
-            float ldot = dot(norm, lightDir);
-            float spotFactor = pow(max(dot(-gLights[i].Direction, gLights[i].Direction), 0.0F), gLights[i].SpotPower);
+            float ldot = diffuseAlbedo.a < 0.97F ? dot(-norm, lightDir) : dot(norm, lightDir);
+            float spotFactor = pow(max(dot(-WorldRayDirection(), gLights[i].Direction), 0.0F), gLights[i].SpotPower);
             float lightPower = (1.0F - diffuseAlbedo.a) * max(dot(-norm, gLights[i].Direction), 0.0F) + (1.0F - material.roughness) * max(ldot, 0.0F);
 
             if(material.metallic > 0.01F || diffuseAlbedo.a < 0.97F)
