@@ -31,6 +31,14 @@ cbuffer objPass: register(b1)
     uint gMatIndex;
 }
 
+/*
+    0: fake light
+    1: xenon light
+    2: warm light
+    3: neon light
+*/
+#define USE_LIGHT 0
+
 #define _USE_MIPMAPS
 
 //ray differentials
@@ -103,13 +111,21 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     //light
     Light gLights[MAX_LIGHTS];
+#if USE_LIGHT == 0
     gLights[0].Strength = float3(1.0F, 1.0F, 1.0F);
+#elif USE_LIGHT == 1
+    gLights[0].Strength = float3(0.2F, 0.3F, 1.0F) * 2;
+#elif USE_LIGHT == 2
+    gLights[0].Strength = float3(1.0F, 0.8F, 0.5F);
+#elif USE_LIGHT == 3
+    gLights[0].Strength = float3(0.75F, 0.9F, 1.0F);
+#endif
     gLights[0].Direction = float3(0.0F, -1.0F, 0.0F);
     gLights[0].Position = float3(-2.0F, 2.45F, -1.0F);
     gLights[0].FalloffStart = 0.01F;
     gLights[0].FalloffEnd = 10.0F;
     gLights[0].SpotPower = 1.0F;
-    gLights[0].Radius = 0.1F;
+    gLights[0].Radius = 0.15F;
     
     //global vars
     const float4 gAmbientLight = float4(0.2F, 0.2F, 0.2F, 1.0F);
@@ -294,7 +310,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 #endif
     
     //blinn phong
-    const float shininess = 1.0F - material.roughness;
+    const float shininess = max(1.0F - material.roughness, 0.01F);
     LightMaterial mat = { diffuseAlbedo, material.fresnelR0, shininess };
     float4 directLight = ComputeLighting(gLights, mat, worldOrigin, norm, -WorldRayDirection(), shadowFactor);
     

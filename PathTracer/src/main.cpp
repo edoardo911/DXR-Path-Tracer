@@ -299,12 +299,14 @@ void App::buildMaterials()
 	auto wall = std::make_unique<Material>();
 	wall->DiffuseAlbedo = { 0.0F, 1.0F, 0.0F, 1.0F };
 	wall->matCBIndex = 2;
+	wall->Roughness = 0.2F;
 	mMaterials.push_back(std::move(wall));
 
 	auto metallicBall = std::make_unique<Material>();
 	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.1F };
 	metallicBall->metallic = 0.8F;
 	metallicBall->matCBIndex = 3;
+	metallicBall->Roughness = 0.2F;
 	mMaterials.push_back(std::move(metallicBall));
 }
 
