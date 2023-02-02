@@ -10,12 +10,14 @@ cbuffer objPass: register(b0)
     uint gMatIndex;
 }
 
+#define SHADOW_BIAS 0.3F
+
 [shader("closesthit")]
 void ShadowClosestHit(inout ShadowHitInfo hit, Attributes bary)
 {
     Material data = gMaterials[gMatIndex];
 
-    hit.occlusion = 0.5F + data.diffuseAlbedo.a / 2.0F;
+    hit.occlusion = min((data.diffuseAlbedo.a / 2.0F) + SHADOW_BIAS, 1.0F);
     hit.distance = RayTCurrent();
 }
 

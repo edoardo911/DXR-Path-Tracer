@@ -238,7 +238,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         {
             TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance > 0.0F)
-                shadowFactor[i] = (1.0F - shadowPayload.occlusion) * (shadowPayload.distance / maxDist);
+                shadowFactor[i] = 1.0F - (clamp(shadowPayload.distance / maxDist, shadowPayload.occlusion, 1.0F));
         }
     }
 #endif
@@ -263,7 +263,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         {
             TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance > 0.0F)
-                shadowFactor[i] = (1.0F - shadowPayload.occlusion) * (shadowPayload.distance / maxDist);
+                shadowFactor[i] = 1.0F - (clamp(shadowPayload.distance / maxDist, shadowPayload.occlusion, 1.0F));
         }
     }
 #endif
@@ -288,7 +288,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         {
             TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance > 0.0F)
-                shadowFactor[i] = (1.0F - shadowPayload.occlusion) * (shadowPayload.distance / maxDist);
+                shadowFactor[i] = 1.0F - (clamp(shadowPayload.distance / maxDist, shadowPayload.occlusion, 1.0F));
         }
     }
 #endif
