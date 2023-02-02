@@ -129,8 +129,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         uint w, h, l;
         gNormalMap[gNormalIndex].GetDimensions(0, w, h, l);
         float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent());
-        float4 normalSample = gNormalMap[gNormalIndex].SampleLevel(gsamTrilinearWrap, uvs, LOD);
-        norm = normalSampleToWorldSpace(normalSample.rgb, norm, tangent);
+        float3 normalSample = normalize(gNormalMap[gNormalIndex].SampleLevel(gsamTrilinearWrap, uvs, LOD).rgb);
+        norm = normalSampleToWorldSpace(normalSample, norm, tangent);
     }
     
     float4 diffuseAlbedo = material.diffuseAlbedo;
