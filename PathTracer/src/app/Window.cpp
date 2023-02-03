@@ -23,6 +23,9 @@ namespace RT
 			return false;
 		if(!initDirectX12())
 			return false;
+		settings.dlssSupported = initDLSS();
+		if(!settings.dlssSupported)
+			settings.dlss = DLSS_OFF;
 
 		if(settings.fullscreen)
 		{
@@ -118,6 +121,20 @@ namespace RT
 		onResize();
 		return true;
 	}
+
+	bool Window::initDLSS() { return false; }
+
+	void Window::createDLSSResources()
+	{
+		/*
+		//depth buffer
+		//motion vector buffer
+		//exposure buffer
+		//resolved buffer
+		*/
+	}
+
+	void Window::initDLSSFeature() {}
 
 	void Window::createCommandObjects()
 	{
@@ -313,6 +330,8 @@ namespace RT
 
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
+
+	void Window::DLSS() {}
 
 	void Window::calculateFrameStats()
 	{

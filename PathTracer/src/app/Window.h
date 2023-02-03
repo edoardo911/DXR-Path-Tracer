@@ -7,6 +7,8 @@
 #include "../input/Keyboard.h"
 #include "../input/Mouse.h"
 
+#include <nvsdk_ngx_helpers.h>
+
 namespace RT
 {
 	class Window
@@ -48,11 +50,16 @@ namespace RT
 
 		bool initMainWindow();
 		bool initDirectX12();
+		bool initDLSS();
+		void initDLSSFeature();
 
 		void getDisplayMode();
 		void toggleFullscreen();
 
 		void calculateFrameStats();
+
+		void createDLSSResources();
+		void DLSS();
 
 		void createCommandObjects();
 		void createSwapChain();
@@ -74,6 +81,15 @@ namespace RT
 
 		static const int swapChainBufferCount = 2;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffers[swapChainBufferCount];
+
+		//dlss resources
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDepthStencilBuffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mMotionVectorBuffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mExposureBuffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mResolvedBuffer;
+
+		NVSDK_NGX_Handle* feature = nullptr;
+		NVSDK_NGX_Parameter* params = nullptr;
 
 		HINSTANCE mWindowInst = nullptr;
 

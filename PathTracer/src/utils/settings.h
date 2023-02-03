@@ -5,6 +5,11 @@
 
 #define NUM_FRAME_RESOURCES 3
 
+#define DLSS_OFF			0
+#define DLSS_PERFORMANCE	1
+#define DLSS_QUALITY		2
+#define DLSS_BALANCED		3
+
 enum MouseButtons
 {
 	MOUSE_LBUTTON = 0,
@@ -21,9 +26,11 @@ namespace RT
 		UINT32 width = 1280;
 		UINT32 height = 720;
 		UINT8 fps = 60;
+		UINT8 dlss = DLSS_OFF;
 
 		bool vSync = false;
 		bool fullscreen = false;
+		bool dlssSupported = false;
 
 		DXGI_FORMAT backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
