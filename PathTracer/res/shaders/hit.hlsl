@@ -41,8 +41,18 @@ cbuffer objPass: register(b1)
 
 #define _USE_MIPMAPS
 
+#ifdef _USE_MIPMAPS
+    #define _ANISOTROPIC
+#endif
+
+#ifdef _ANISOTROPIC
+    #define MIPMAP_FUNC min
+#else
+    #define MIPMAP_FUNC max
+#endif
+
 //ray differentials
-float computeTextureLOD(uint2 size, float3 d, float t)
+float computeTextureLOD(uint2 size, float3 d, float t, out float2 anisotropicDir)
 {
 #ifdef _USE_MIPMAPS
     uint vertId = 3 * PrimitiveIndex();
@@ -81,7 +91,14 @@ float computeTextureLOD(uint2 size, float3 d, float t)
     float dtdx = size.y * (dudx * g1.y + dvdy * g2.y);
     float dtdy = size.y * (dudy * g1.y + dvdy * g2.y);
     
-    float p = max(sqrt(dsdx * dsdx + dtdx * dtdx), sqrt(dsdy * dsdy + dtdy * dtdy));
+#ifdef _ANISOTROPIC
+    if(sqrt(dsdx * dsdx + dtdx * dtdx) > sqrt(dsdy * dsdy + dtdy * dtdy))
+        anisotropicDir = float2(dsdx, dtdx);
+    else
+        anisotropicDir = float2(dsdy, dtdy);
+#endif
+    
+    float p = MIPMAP_FUNC(sqrt(dsdx * dsdx + dtdx * dtdx), sqrt(dsdy * dsdy + dtdy * dtdy));
     return log2(ceil(p));
 #else
     return 0;
@@ -133,19 +150,30 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     //diffuse and normal sampling
     float4 mapColor = float4(1, 1, 1, 1);
     
+    float2 anisotropicDir = 0;
     if(gDiffuseIndex >= 0)
     {
         uint w, h, l;
         gDiffuseMap[gDiffuseIndex].GetDimensions(0, w, h, l);
-        float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent());
-        mapColor = gDiffuseMap[gDiffuseIndex].SampleLevel(gsamTrilinearWrap, uvs, LOD);
+        float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent(), anisotropicDir);
+    #ifdef _ANISOTROPIC
+        float2 offset = anisotropicDir * (nextRand(seed) * 2.0F - 1.0F) * float2(1.0F / w, 1.0F / h);
+    #else
+        float2 offset = 0.0F;
+    #endif
+        mapColor = gDiffuseMap[gDiffuseIndex].SampleLevel(gsamTrilinearWrap, uvs + offset, LOD);
     }
     if(gNormalIndex >= 0)
     {
         uint w, h, l;
         gNormalMap[gNormalIndex].GetDimensions(0, w, h, l);
-        float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent());
-        float3 normalSample = normalize(gNormalMap[gNormalIndex].SampleLevel(gsamTrilinearWrap, uvs, LOD).rgb);
+        float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent(), anisotropicDir);
+    #ifdef _ANISOTROPIC
+        float2 offset = anisotropicDir * (nextRand(seed) * 2.0F - 1.0F) * float2(1.0F / w, 1.0F / h);
+    #else
+        float2 offset = 0.0F;
+    #endif
+        float3 normalSample = normalize(gNormalMap[gNormalIndex].SampleLevel(gsamTrilinearWrap, uvs + offset, LOD).rgb);
         norm = normalSampleToWorldSpace(normalSample, norm, tangent);
     }
     
