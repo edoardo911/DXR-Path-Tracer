@@ -33,9 +33,10 @@
 #include <memory>
 #include <string>
 #include <array>
+#include <ppl.h>
 
-#include "d3dutil.h"
 #include "settings.h"
+#include "d3dutil.h"
 
 //macros
 #ifndef ThrowIfFailed

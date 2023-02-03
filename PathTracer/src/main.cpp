@@ -120,7 +120,7 @@ int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance, 
 	catch(RaytracingException e)
 	{
 		std::wstring errorString = AnsiToWString(std::string(e.what()));
-		MessageBox(0, errorString.c_str(), L"Generic Exception", MB_OK);
+		MessageBox(0, errorString.c_str(), L"Raytracing Exception", MB_OK);
 		return -2;
 	}
 	catch(DxException e)

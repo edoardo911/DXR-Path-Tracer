@@ -23,6 +23,12 @@ namespace RT
 			return false;
 		if(!initDirectX12())
 			return false;
+
+		if(settings.fullscreen)
+		{
+			mSwapChain->SetFullscreenState(TRUE, NULL);
+			mSwapChain->ResizeTarget(&mFullscreenMode);
+		}
 		return true;
 	}
 
