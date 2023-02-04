@@ -70,7 +70,7 @@ namespace RT
 		void calculateFrameStats();
 
 		void createDLSSResources();
-		void DLSS(ID3D12Resource* outputResource);
+		void DLSS(ID3D12Resource* outputResource, bool reset = false);
 
 		void createCommandObjects();
 		void createSwapChain();
@@ -94,7 +94,7 @@ namespace RT
 		Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffers[swapChainBufferCount];
 
 		//dlss resources
-		Microsoft::WRL::ComPtr<ID3D12Resource> mDepthStencilBuffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDepthBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mMotionVectorBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mResolvedBuffer;
 

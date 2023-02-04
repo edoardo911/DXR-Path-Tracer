@@ -13,6 +13,9 @@ cbuffer cbPass: register(b0)
 
 RWTexture2D<float4> gOutput: register(u0);
 RWTexture2D<float4> gSumBuffer: register(u1);
+RWTexture2D<float2> gLastPosition: register(u2);
+RWTexture2D<float> gDepthBuffer: register(u3);
+RWTexture2D<float2> gMotionVectorBuffer: register(u4);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
@@ -32,6 +35,7 @@ void RayGen()
     
     HitInfo payload;
     payload.colorAndDistance = float4(0, 0, 0, 0);
+    payload.hPos = float2(0, 0);
     payload.recursionDepth = 1;
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
@@ -47,4 +51,13 @@ void RayGen()
         gSumBuffer[launchIndex].rgb = color;
         gOutput[launchIndex].rgb = color / gFrameIndex;
     }
+    
+    if(payload.colorAndDistance.a < 0.0F)
+        gDepthBuffer[launchIndex] = 1.0F;
+    else
+        gDepthBuffer[launchIndex] = min(payload.colorAndDistance.a / (gFarPlane - gNearPlane), 1.0F);
+    
+    float2 lastPos = gLastPosition[launchIndex];
+    gMotionVectorBuffer[launchIndex] = lastPos - payload.hPos;
+    gLastPosition[launchIndex] = payload.hPos;
 }

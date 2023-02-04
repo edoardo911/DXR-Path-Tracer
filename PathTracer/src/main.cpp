@@ -77,7 +77,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mHeap;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputResource[2];
+	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputResource[3];
 
 	std::unordered_map<std::string, std::unique_ptr<InstanceData>> mGeometries;
 	std::vector<std::unique_ptr<RaytracingInstance>> mRTInstances;
@@ -105,7 +105,7 @@ private:
 	MainPass mMainPassCB;
 	UINT mFrameIndex = 0;
 
-	bool mCameraMode = true;
+	bool mCameraMode = false;
 };
 
 int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance, _In_ PSTR cmdLine, _In_ int showCmd)
@@ -331,10 +331,14 @@ void App::buildOutputResource()
 	resDesc.MipLevels = 1;
 
 	auto hp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(&mOutputResource[0])));
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, settings.dlss ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS : D3D12_RESOURCE_STATE_COPY_SOURCE,
+				  nullptr, IID_PPV_ARGS(&mOutputResource[0])));
 
 	resDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mOutputResource[1])));
+
+	resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mOutputResource[2])));
 }
 
 App::AccelerationStructureBuffers App::createBottomLevelAS(const std::vector<std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, UINT32>>& vVertexBuffers,
@@ -391,14 +395,14 @@ void App::createRayGenSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddHeapRangesParameter({ { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2 } });
+	rsc.AddHeapRangesParameter({ { 0, 5, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5 } });
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
 void App::createMissSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6 } });
+	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -417,7 +421,7 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0, 1);
-	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3 } });
+	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -473,7 +477,7 @@ void App::createRaytracingPipeline()
 	pipeline.AddRootSignatureAssociation(mSignatures["aoClosestHit"].Get(), { L"AOHitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
 
-	pipeline.SetMaxPayloadSize(4 * sizeof(float) + 1 * sizeof(UINT));
+	pipeline.SetMaxPayloadSize(6 * sizeof(float) + 1 * sizeof(UINT));
 	pipeline.SetMaxAttributeSize(2 * sizeof(float));
 	pipeline.SetMaxRecursionDepth(4);
 
@@ -548,7 +552,7 @@ void App::buildDescriptorHeap()
 	if(!mHeap)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-		heapDesc.NumDescriptors = 7;
+		heapDesc.NumDescriptors = 10;
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
@@ -564,6 +568,17 @@ void App::buildDescriptorHeap()
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mOutputResource[1].Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mOutputResource[2].Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	if(settings.dlss)
+	{
+		md3dDevice->CreateUnorderedAccessView(mDepthBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+		md3dDevice->CreateUnorderedAccessView(mMotionVectorBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	}
+	else
+		hDescriptor.Offset(2, mCbvSrvUavDescriptorSize);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -643,7 +658,7 @@ void App::draw()
 		CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST),
 		CD3DX12_RESOURCE_BARRIER::Transition(mOutputResource[0].Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
 	};
-	mCommandList->ResourceBarrier(2, barriers);
+	mCommandList->ResourceBarrier(settings.dlss ? 1 : 2, barriers);
 
 	ID3D12DescriptorHeap* heaps[] = { mHeap.Get() };
 	mCommandList->SetDescriptorHeaps(1, heaps);
@@ -666,18 +681,32 @@ void App::draw()
 	desc.HitGroupTable.SizeInBytes = hitGroupSectionSizeInBytes;
 	desc.HitGroupTable.StrideInBytes = mSBTHelper.GetHitGroupEntrySize();
 
-	desc.Width = settings.width;
-	desc.Height = settings.height;
+	desc.Width = settings.dlss ? settings.dlssWidth : settings.width;
+	desc.Height = settings.dlss ? settings.dlssHeight : settings.height;
 	desc.Depth = 1;
 
 	mCommandList->SetPipelineState1(mRtStateObject.Get());
 	mCommandList->DispatchRays(&desc);
 
-	barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mOutputResource[0].Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	mCommandList->ResourceBarrier(1, barriers);
-	mCommandList->CopyResource(currentBackBuffer(), mOutputResource[0].Get());
-	barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
-	mCommandList->ResourceBarrier(1, barriers);
+	DLSS(mOutputResource[0].Get());
+
+	if(settings.dlss)
+	{
+		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		mCommandList->ResourceBarrier(1, barriers);
+		mCommandList->CopyResource(currentBackBuffer(), mResolvedBuffer.Get());
+		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+		barriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		mCommandList->ResourceBarrier(2, barriers);
+	}
+	else
+	{
+		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mOutputResource[0].Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		mCommandList->ResourceBarrier(1, barriers);
+		mCommandList->CopyResource(currentBackBuffer(), mOutputResource[0].Get());
+		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+		mCommandList->ResourceBarrier(1, barriers);
+	}
 
 	ThrowIfFailed(mCommandList->Close());
 

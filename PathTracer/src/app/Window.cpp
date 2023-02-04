@@ -241,7 +241,7 @@ namespace RT
 
 		//depth buffer
 		resDesc.Format = DXGI_FORMAT_R32_FLOAT;
-		md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDepthStencilBuffer));
+		md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDepthBuffer));
 
 		//resolved buffer
 		resDesc.Format = settings.backBufferFormat;
@@ -445,13 +445,17 @@ namespace RT
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
 
-	void Window::DLSS(ID3D12Resource* outputResource)
+	void Window::DLSS(ID3D12Resource* outputResource, bool reset)
 	{
 		NVSDK_NGX_D3D12_DLSS_Eval_Params evalDesc = {};
 		evalDesc.Feature.pInColor = outputResource;
 		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
-		evalDesc.pInDepth = mDepthStencilBuffer.Get();
+		evalDesc.pInDepth = mDepthBuffer.Get();
 		evalDesc.pInMotionVectors = mMotionVectorBuffer.Get();
+		evalDesc.InJitterOffsetX = 0;
+		evalDesc.InJitterOffsetY = 0;
+		evalDesc.InRenderSubrectDimensions = { settings.dlssWidth, settings.dlssHeight };
+		evalDesc.InReset = reset ? 1 : 0;
 		
 		NGX_D3D12_EVALUATE_DLSS_EXT(mCommandList.Get(), feature, params, &evalDesc);
 	}

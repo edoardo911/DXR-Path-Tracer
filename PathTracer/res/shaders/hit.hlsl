@@ -115,6 +115,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 barycentrics = float3(1.0F - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
     float3 normRayDir = normalize(WorldRayDirection());
     
+    float3 pos = vertices[indices[vertId]].pos * barycentrics.x + vertices[indices[vertId + 1]].pos * barycentrics.y +
+				 vertices[indices[vertId + 2]].pos * barycentrics.z;
     float2 uvs = vertices[indices[vertId]].uvs * barycentrics.x + vertices[indices[vertId + 1]].uvs * barycentrics.y +
 				 vertices[indices[vertId + 2]].uvs * barycentrics.z;
     float3 norm = vertices[indices[vertId]].normal * barycentrics.x + vertices[indices[vertId + 1]].normal * barycentrics.y +
@@ -419,4 +421,5 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         hitColor.rgb *= 0.4F;
     
     payload.colorAndDistance = hitColor;
+    payload.hPos = pos.xy;
 }
