@@ -142,6 +142,7 @@
     <ClCompile Include="src\app\Window.cpp" />
     <ClCompile Include="src\input\Keyboard.cpp" />
     <ClCompile Include="src\input\Mouse.cpp" />
+    <ClCompile Include="src\logging\Logger.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\raytracing\BottomLevelASGenerator.cpp" />
     <ClCompile Include="src\raytracing\RaytracingPipelineGenerator.cpp" />
@@ -161,6 +162,7 @@
     <ClInclude Include="src\app\Window.h" />
     <ClInclude Include="src\input\Keyboard.h" />
     <ClInclude Include="src\input\Mouse.h" />
+    <ClInclude Include="src\logging\Logger.h" />
     <ClInclude Include="src\raytracing\BottomLevelASGenerator.h" />
     <ClInclude Include="src\raytracing\DXRHelper.h" />
     <ClInclude Include="src\raytracing\RaytracingPipelineGenerator.h" />
