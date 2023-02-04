@@ -6,6 +6,8 @@ cbuffer cbPass: register(b0)
     float4x4 gInvProj;
     float gFov;
     float gAspectRatio;
+    float gNearPlane;
+    float gFarPlane;
     uint gFrameIndex;
 }
 
@@ -25,8 +27,8 @@ void RayGen()
     ray.Origin = mul(gInvView, float4(0, 0, 0, 1));
     float4 target = mul(gInvProj, float4(d.x, -d.y, 1, 1));
     ray.Direction = mul(gInvView, float4(target.xyz, 0));
-    ray.TMin = 0.01F;
-    ray.TMax = 10000;
+    ray.TMin = gNearPlane;
+    ray.TMax = gFarPlane;
     
     HitInfo payload;
     payload.colorAndDistance = float4(0, 0, 0, 0);

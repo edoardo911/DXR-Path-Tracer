@@ -25,8 +25,10 @@ namespace RT
 	public:
 		UINT32 width = 1280;
 		UINT32 height = 720;
+		UINT32 dlssWidth = 0;
+		UINT32 dlssHeight = 0;
 		UINT8 fps = 60;
-		UINT8 dlss = DLSS_OFF;
+		UINT8 dlss = DLSS_BALANCED;
 
 		bool vSync = false;
 		bool fullscreen = false;

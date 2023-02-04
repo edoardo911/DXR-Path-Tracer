@@ -11,6 +11,17 @@
 
 namespace RT
 {
+	class DLSSException: public std::exception
+	{
+	public:
+		explicit inline DLSSException(const char* message): msg(message) {}
+		explicit inline DLSSException(const std::string& message) : msg(message) {}
+		inline ~DLSSException() noexcept {}
+		const char* what() const noexcept override { return msg.c_str(); }
+	private:
+		std::string msg;
+	};
+
 	class Window
 	{
 	public:
@@ -59,7 +70,7 @@ namespace RT
 		void calculateFrameStats();
 
 		void createDLSSResources();
-		void DLSS();
+		void DLSS(ID3D12Resource* outputResource);
 
 		void createCommandObjects();
 		void createSwapChain();
@@ -85,7 +96,6 @@ namespace RT
 		//dlss resources
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDepthStencilBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mMotionVectorBuffer;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mExposureBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mResolvedBuffer;
 
 		NVSDK_NGX_Handle* feature = nullptr;

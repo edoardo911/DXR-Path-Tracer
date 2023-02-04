@@ -20,6 +20,8 @@ cbuffer cbPass: register(b0)
     float4x4 gInvProj;
     float gFov;
     float gAspectRatio;
+    float gNearPlane;
+    float gFarPlane;
     uint gFrameIndex;
 }
 
@@ -246,7 +248,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     RayDesc reflRay;
     reflRay.Origin = worldOrigin;
     reflRay.Direction = normalize(rv);
-    reflRay.TMin = 0.01F;
+    reflRay.TMin = gNearPlane;
     reflRay.TMax = 1.5F;
 	
     TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
@@ -272,7 +274,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         RayDesc ray;
         ray.Origin = worldOrigin;
         ray.Direction = normalize(lightSphereDirection);
-        ray.TMin = 0.01F;
+        ray.TMin = gNearPlane;
         ray.TMax = d;
     
         ShadowHitInfo shadowPayload;
@@ -297,7 +299,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         RayDesc ray;
         ray.Origin = worldOrigin;
         ray.Direction = normalize(lightSphereDirection);
-        ray.TMin = 0.01F;
+        ray.TMin = gNearPlane;
         ray.TMax = d;
     
         ShadowHitInfo shadowPayload;
@@ -322,7 +324,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         RayDesc ray;
         ray.Origin = worldOrigin;
         ray.Direction = normalize(lightSphereDirection);
-        ray.TMin = 0.01F;
+        ray.TMin = gNearPlane;
         ray.TMax = d;
         
         ShadowHitInfo shadowPayload;
@@ -364,7 +366,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
             reflRay.Direction = reflect(WorldRayDirection(), norm);
         else
             reflRay.Direction = calcReflectionDirection(WorldRayDirection(), norm, material.roughness / 20.0F, seed);
-        reflRay.TMin = 0.01F;
+        reflRay.TMin = gNearPlane;
         reflRay.TMax = 1200 * shininess;
 
         TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
@@ -393,7 +395,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
             refrRay.Direction = refract(WorldRayDirection(), norm, material.refractionIndex);
         else
             refrRay.Direction = calcRefractionDirection(WorldRayDirection(), norm, material.refractionIndex, material.roughness / 20.0F, seed);
-        refrRay.TMin = 0.01F;
+        refrRay.TMin = gNearPlane;
         refrRay.TMax = 500 * max(diffuseAlbedo.a, 40.0F);
 
         TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, refrRay, refrPayload);

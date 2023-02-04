@@ -40,6 +40,8 @@ namespace RT
 		DirectX::XMFLOAT4X4 invProj;
 		float fov;
 		float aspectRatio;
+		float nearPlane;
+		float farPlane;
 		UINT32 frameIndex = 1;
 	};
 

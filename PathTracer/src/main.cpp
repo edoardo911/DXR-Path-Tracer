@@ -117,6 +117,12 @@ int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance, 
 			return EXIT_FAILURE;
 		return app.run();
 	}
+	catch(DLSSException e)
+	{
+		std::wstring errorString = AnsiToWString(std::string(e.what()));
+		MessageBox(0, errorString.c_str(), L"DLSS Exception", MB_OK);
+		return -3;
+	}
 	catch(RaytracingException e)
 	{
 		std::wstring errorString = AnsiToWString(std::string(e.what()));
@@ -317,8 +323,8 @@ void App::buildOutputResource()
 	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	resDesc.Format = settings.backBufferFormat;
 	resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	resDesc.Width = settings.width;
-	resDesc.Height = settings.height;
+	resDesc.Width = settings.dlss ? settings.dlssWidth : settings.width;
+	resDesc.Height = settings.dlss ? settings.dlssHeight : settings.height;
 	resDesc.SampleDesc.Count = 1;
 	resDesc.SampleDesc.Quality = 0;
 	resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -708,6 +714,8 @@ void App::updateMainPassCB()
 
 		mMainPassCB.fov = 0.25F * XM_PI;
 		mMainPassCB.aspectRatio = aspectRatio();
+		mMainPassCB.nearPlane = 0.01F;
+		mMainPassCB.farPlane = 10000.0F;
 	}
 
 	mCurrFrameResource->passCB->copyData(0, mMainPassCB);
