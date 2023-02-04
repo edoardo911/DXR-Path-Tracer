@@ -1,5 +1,7 @@
 #include "Window.h"
 
+#include "../logging/Logger.h"
+
 namespace RT
 {
 	Window* Window::mWindow = nullptr;
@@ -333,7 +335,7 @@ namespace RT
 			mbsUsed = info.CurrentUsage / powf(1024, 2);
 			percUsedVMem = (float) info.CurrentUsage / info.Budget;
 
-			::OutputDebugString((L"FPS: " + std::to_wstring(mFPS) + L", " + std::to_wstring(mbsUsed) + L"MB (" + std::to_wstring(percUsedVMem * 100) + L"%)\n").c_str());
+			Logger::INFO.log(L"FPS: " + std::to_wstring(mFPS) + L", " + std::to_wstring(mbsUsed) + L"MB (" + std::to_wstring(percUsedVMem * 100) + L"%)\n");
 		}
 	}
 

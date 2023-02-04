@@ -29,9 +29,11 @@
 #include <cassert>
 #include <fstream>
 #include <sstream>
+#include <codecvt>
 #include <vector>
 #include <memory>
 #include <string>
+#include <locale>
 #include <array>
 #include <ppl.h>
 
