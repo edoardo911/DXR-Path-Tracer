@@ -8,8 +8,8 @@ cbuffer cbPass: register(b0)
     float gAspectRatio;
     float gNearPlane;
     float gFarPlane;
+    float gLODOffset;
     uint gFrameIndex;
-    int gLODOffset;
 }
 
 RWTexture2D<float4> gOutput: register(u0);

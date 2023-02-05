@@ -64,6 +64,10 @@ namespace RT
 			Logger::INFO.log(L"DLSS: Quality");
 		else if(settings.dlss == DLSS_BALANCED)
 			Logger::INFO.log(L"DLSS: Balanced");
+		else if(settings.dlss == DLSS_ULTRA_PERFORMANCE)
+			Logger::INFO.log(L"DLSS: Ultra Performance");
+		else if(settings.dlss == DLSS_ULTRA_QUALITY)
+			Logger::INFO.log(L"DLSS: Ultra Quality");
 		Logger::INFO.log(L"vSync: " + std::wstring(settings.vSync ? L"On" : L"Off"));
 		Logger::INFO.log(L"Fullscreeen " + std::wstring(settings.fullscreen ? L"On" : L"Off"));
 		Logger::INFO.log(L"DLSS Supported: " + std::wstring(settings.dlssSupported ? L"Yes" : L"No"));
@@ -212,6 +216,12 @@ namespace RT
 				break;
 			case DLSS_BALANCED:
 				val = NVSDK_NGX_PerfQuality_Value_Balanced;
+				break;
+			case DLSS_ULTRA_PERFORMANCE:
+				val = NVSDK_NGX_PerfQuality_Value_UltraPerformance;
+				break;
+			case DLSS_ULTRA_QUALITY:
+				val = NVSDK_NGX_PerfQuality_Value_UltraQuality;
 				break;
 			}
 

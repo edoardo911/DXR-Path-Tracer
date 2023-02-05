@@ -1,14 +1,16 @@
 #pragma once
 
 #define SUPPORTED_KEYBOARD_KEYS 256
-#define SUPPORTED_MOUSE_KEYS 3
+#define SUPPORTED_MOUSE_KEYS	3
 
-#define NUM_FRAME_RESOURCES 3
+#define NUM_FRAME_RESOURCES		3
 
-#define DLSS_OFF			0
-#define DLSS_PERFORMANCE	1
-#define DLSS_QUALITY		2
-#define DLSS_BALANCED		3
+#define DLSS_OFF				0
+#define DLSS_PERFORMANCE		1
+#define DLSS_QUALITY			2
+#define DLSS_BALANCED			3
+#define DLSS_ULTRA_PERFORMANCE	4
+#define DLSS_ULTRA_QUALITY		5
 
 enum MouseButtons
 {

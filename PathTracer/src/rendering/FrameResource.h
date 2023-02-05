@@ -42,8 +42,8 @@ namespace RT
 		float aspectRatio;
 		float nearPlane;
 		float farPlane;
+		float LODOffset = 0;
 		UINT32 frameIndex = 1;
-		INT32 LODOffset = 0;
 	};
 
 	struct ObjectConstants

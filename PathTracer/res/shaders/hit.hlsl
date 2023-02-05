@@ -22,8 +22,8 @@ cbuffer cbPass: register(b0)
     float gAspectRatio;
     float gNearPlane;
     float gFarPlane;
+    float gLODOffset;
     uint gFrameIndex;
-    int gLODOffset;
 }
 
 cbuffer objPass: register(b1)
