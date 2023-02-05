@@ -43,6 +43,7 @@ namespace RT
 		float nearPlane;
 		float farPlane;
 		UINT32 frameIndex = 1;
+		INT32 LODOffset = 0;
 	};
 
 	struct ObjectConstants

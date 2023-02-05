@@ -23,6 +23,7 @@ cbuffer cbPass: register(b0)
     float gNearPlane;
     float gFarPlane;
     uint gFrameIndex;
+    int gLODOffset;
 }
 
 cbuffer objPass: register(b1)
@@ -101,7 +102,7 @@ float computeTextureLOD(uint2 size, float3 d, float t, out float2 anisotropicDir
 #endif
     
     float p = MIPMAP_FUNC(sqrt(dsdx * dsdx + dtdx * dtdx), sqrt(dsdy * dsdy + dtdy * dtdy));
-    return log2(ceil(p));
+    return log2(ceil(p)) + gLODOffset;
 #else
     return 0;
 #endif

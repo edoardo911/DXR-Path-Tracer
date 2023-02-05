@@ -33,11 +33,14 @@ namespace RT
 	{
 		if(!initMainWindow())
 			return false;
+		Logger::INFO.log("Initialized Window");
 		if(!initDirectX12())
 			return false;
+		Logger::INFO.log("Initialized DirectX12");
 		settings.dlssSupported = initDLSS();
 		if(!settings.dlssSupported)
 			settings.dlss = DLSS_OFF;
+		Logger::INFO.log("Initialized DLSS");
 
 		//logging
 
@@ -46,6 +49,26 @@ namespace RT
 			mSwapChain->SetFullscreenState(TRUE, NULL);
 			mSwapChain->ResizeTarget(&mFullscreenMode);
 		}
+
+		Logger::INFO.log(L"*** Settings ***");
+		Logger::INFO.log(L"Width: " + std::to_wstring(settings.width));
+		Logger::INFO.log(L"Height: " + std::to_wstring(settings.height));
+		Logger::INFO.log(L"DLSS Width: " + std::to_wstring(settings.dlssWidth));
+		Logger::INFO.log(L"DLSS Height: " + std::to_wstring(settings.dlssHeight));
+		Logger::INFO.log(L"FPS: " + std::to_wstring(settings.fps));
+		if(settings.dlss == DLSS_OFF)
+			Logger::INFO.log(L"DLSS: Off");
+		else if(settings.dlss == DLSS_PERFORMANCE)
+			Logger::INFO.log(L"DLSS: Performance");
+		else if(settings.dlss == DLSS_QUALITY)
+			Logger::INFO.log(L"DLSS: Quality");
+		else if(settings.dlss == DLSS_BALANCED)
+			Logger::INFO.log(L"DLSS: Balanced");
+		Logger::INFO.log(L"vSync: " + std::wstring(settings.vSync ? L"On" : L"Off"));
+		Logger::INFO.log(L"Fullscreeen " + std::wstring(settings.fullscreen ? L"On" : L"Off"));
+		Logger::INFO.log(L"DLSS Supported: " + std::wstring(settings.dlssSupported ? L"Yes" : L"No"));
+		Logger::INFO.log(L"HDR: " + std::wstring((settings.backBufferFormat == DXGI_FORMAT_R8G8B8A8_UNORM) ? L"No" : L"Yes"));
+		Logger::INFO.log(L"Name: " + settings.name);
 		return true;
 	}
 
@@ -219,6 +242,13 @@ namespace RT
 		}
 		else
 			NVSDK_NGX_D3D12_Shutdown();
+	}
+
+	void Window::resetDLSSFeature()
+	{
+		if(feature)
+			NVSDK_NGX_D3D12_ReleaseFeature(feature);
+		initDLSSFeature();
 	}
 
 	void Window::createDLSSResources()
@@ -479,7 +509,7 @@ namespace RT
 			mbsUsed = info.CurrentUsage / powf(1024, 2);
 			percUsedVMem = (float) info.CurrentUsage / info.Budget;
 
-			Logger::INFO.log(L"FPS: " + std::to_wstring(mFPS) + L", " + std::to_wstring(mbsUsed) + L"MB (" + std::to_wstring(percUsedVMem * 100) + L"%)\n");
+			Logger::INFO.log(L"FPS: " + std::to_wstring(mFPS) + L", " + std::to_wstring(mbsUsed) + L"MB (" + std::to_wstring(percUsedVMem * 100) + L"%)");
 		}
 	}
 

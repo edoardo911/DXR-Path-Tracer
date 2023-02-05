@@ -63,6 +63,7 @@ namespace RT
 		bool initDirectX12();
 		bool initDLSS();
 		void initDLSSFeature();
+		void resetDLSSFeature();
 
 		void getDisplayMode();
 		void toggleFullscreen();

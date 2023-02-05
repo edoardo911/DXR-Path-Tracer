@@ -1,5 +1,7 @@
 #include "utils/header.h"
 
+#include "logging/Logger.h"
+
 #include "app/RaytracingInstance.h"
 #include "app/Window.h"
 
@@ -174,19 +176,30 @@ bool App::initialize()
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
 	buildGeometries();
+	Logger::INFO.log("Initialized Geometries");
 	buildInstances();
+	Logger::INFO.log("Initialized Instances");
 	buildMaterials();
+	Logger::INFO.log("Initialized Materials");
 	buildOutputResource();
+	Logger::INFO.log("Initialized Output Resources");
 
 	createAccelerationStructures();
+	Logger::INFO.log("Initialized Acceleration Structure");
 	ThrowIfFailed(mDirectCmdListAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 	createRaytracingPipeline();
+	Logger::INFO.log("Initialized Ray Tracing Pipeline");
 
+	Logger::INFO.log("Loading Textures...");
 	loadTextures();
+	Logger::INFO.log("Textures Loaded");
 	buildDescriptorHeap();
+	Logger::INFO.log("Initialized Descriptor Heap");
 	buildFrameResources();
+	Logger::INFO.log("Initialized Frame Resources");
 	createShaderBindingTable();
+	Logger::INFO.log("Initialized Shader Binding Table");
 
 	ThrowIfFailed(mCommandList->Close());
 
@@ -201,6 +214,7 @@ bool App::initialize()
 		toggleCursor(false);
 	mouse.setPos(settings.width / 2, settings.height / 2);
 	centerCursor();
+	Logger::INFO.log("Initialization has succeeded. Starting game loop...");
 	return true;
 }
 
@@ -745,6 +759,8 @@ void App::updateMainPassCB()
 		mMainPassCB.aspectRatio = aspectRatio();
 		mMainPassCB.nearPlane = 0.01F;
 		mMainPassCB.farPlane = 10000.0F;
+		if(settings.dlss)
+			mMainPassCB.LODOffset = -1;
 	}
 
 	mCurrFrameResource->passCB->copyData(0, mMainPassCB);
@@ -798,6 +814,9 @@ void App::onResize()
 
 	if(mOutputResource[0])
 	{
+		if(settings.dlss)
+			resetDLSSFeature();
+
 		buildOutputResource();
 		buildDescriptorHeap();
 	}
