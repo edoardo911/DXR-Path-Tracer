@@ -760,7 +760,7 @@ void App::updateMainPassCB()
 		mMainPassCB.nearPlane = 0.01F;
 		mMainPassCB.farPlane = 10000.0F;
 		if(settings.dlss)
-			mMainPassCB.LODOffset = log2f((float) settings.dlssWidth / settings.width) - 1.0F;
+			mMainPassCB.LODOffset = log2f((float) settings.dlssWidth / settings.width) - 0.5F;
 	}
 
 	mCurrFrameResource->passCB->copyData(0, mMainPassCB);
