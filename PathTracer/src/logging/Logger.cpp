@@ -61,4 +61,7 @@ namespace RT
 
 		return L"[" + time + L"] ";
 	}
+
+	void Log::log(int value) { Log::log(std::to_wstring(value)); }
+	void Log::log(float value) { Log::log(std::to_wstring(value)); }
 }

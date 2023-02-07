@@ -19,6 +19,8 @@ namespace RT
 
 		void log(std::string string);
 		void log(std::wstring string);
+		void log(int value);
+		void log(float value);
 	protected:
 		inline Log(LOGGING_SEVERITY sev): severity(sev) {}
 
