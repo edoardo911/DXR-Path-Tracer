@@ -133,5 +133,7 @@ namespace RT
 		float mbsUsed = 0;
 	private:
 		double mFrameTime = 0.0;
+		int phaseCount = 0;
+		int phase = 0;
 	};
 }

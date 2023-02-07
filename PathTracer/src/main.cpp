@@ -702,7 +702,8 @@ void App::draw()
 	mCommandList->SetPipelineState1(mRtStateObject.Get());
 	mCommandList->DispatchRays(&desc);
 
-	DLSS(mOutputResource[0].Get());
+	if(settings.dlss)
+		DLSS(mOutputResource[0].Get());
 
 	if(settings.dlss)
 	{
@@ -836,7 +837,7 @@ void App::keyboardInput()
 	if(keyboard.isKeyDown(KEY_D))
 		mCam->strafe(speed * dt);
 
-	if(keyboard.isKeyPressed(VK_CONTROL))
+	if(keyboard.isKeyPressed(VK_F1))
 	{
 		settings.fps = 0;
 		resetFPS();

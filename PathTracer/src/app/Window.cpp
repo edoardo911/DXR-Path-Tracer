@@ -246,6 +246,8 @@ namespace RT
 			ThrowIfFailed(mCommandList->Close());
 			ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
 			mCommandQueue->ExecuteCommandLists(1, ppCommandLists);
+			
+			phaseCount = (int) (8 * ((float) settings.height / settings.dlssHeight) * ((float) settings.height / settings.dlssHeight));
 			flushCommandQueue();
 
 			createDLSSResources();
@@ -492,12 +494,15 @@ namespace RT
 		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
 		evalDesc.pInDepth = mDepthBuffer.Get();
 		evalDesc.pInMotionVectors = mMotionVectorBuffer.Get();
-		evalDesc.InJitterOffsetX = 0;
-		evalDesc.InJitterOffsetY = 0;
+		evalDesc.InJitterOffsetX = HaltonSequence(2, phase + 1) - 0.5F;
+		evalDesc.InJitterOffsetY = HaltonSequence(3, phase + 1) - 0.5F;
 		evalDesc.InRenderSubrectDimensions = { settings.dlssWidth, settings.dlssHeight };
 		evalDesc.InReset = reset ? 1 : 0;
+		evalDesc.InFrameTimeDeltaInMsec = mTimer.deltaTime();
 		
 		NGX_D3D12_EVALUATE_DLSS_EXT(mCommandList.Get(), feature, params, &evalDesc);
+
+		phase = (phase + 1) % phaseCount;
 	}
 
 	void Window::calculateFrameStats()

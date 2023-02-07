@@ -52,4 +52,20 @@ namespace RT
 
         return I;
     }
+
+    inline static float HaltonSequence(int base, int phase)
+    {
+        float f = 1.0F;
+        float r = 0;
+        int i = phase;
+
+        while(i > 0)
+        {
+            f /= base;
+            r += f * (i % base);
+            i = (int) ((float) i / base);
+        }
+
+        return r;
+    }
 }
