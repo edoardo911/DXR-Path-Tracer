@@ -7,7 +7,7 @@ namespace RT
 	class Camera
 	{
 	public:
-		inline Camera(float aspectRatio) { setLens(0.25F * DirectX::XM_PI, aspectRatio, 1.0F, 1000.0F); }
+		inline Camera(float aspectRatio) { setLens(0.25F * DirectX::XM_PI, aspectRatio, 0.01F, 10000.0F); }
 		~Camera() = default;
 
 		void setPos(float, float, float);

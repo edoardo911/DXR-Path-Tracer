@@ -22,7 +22,7 @@ namespace RT
 		wide.resize(convertResult);
 		MultiByteToWideChar(CP_UTF8, 0, string.c_str(), (int) string.length(), &wide[0], (int) wide.size());
 
-		::OutputDebugString((prefix + time + wide).c_str());
+		::OutputDebugString((prefix + time + wide + L"\n").c_str());
 	#endif
 	}
 
@@ -39,7 +39,7 @@ namespace RT
 		else if(severity == ERR)
 			prefix = L"[ERROR]";
 
-		::OutputDebugString((prefix + time + string).c_str());
+		::OutputDebugString((prefix + time + string + L"\n").c_str());
 	#endif
 	}
 

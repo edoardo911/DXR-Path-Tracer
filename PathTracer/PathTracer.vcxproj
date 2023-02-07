@@ -175,6 +175,7 @@
     <ClInclude Include="src\utils\d3dx12.h" />
     <ClInclude Include="src\utils\GeometryGenerator.h" />
     <ClInclude Include="src\utils\header.h" />
+    <ClInclude Include="src\utils\keys.h" />
     <ClInclude Include="src\utils\MathUtil.h" />
     <ClInclude Include="src\utils\ModelLoader.h" />
     <ClInclude Include="src\utils\settings.h" />

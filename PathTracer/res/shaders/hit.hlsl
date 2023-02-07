@@ -20,6 +20,9 @@ cbuffer cbPass: register(b0)
     float4x4 gInvProj;
     float gFov;
     float gAspectRatio;
+    float gNearPlane;
+    float gFarPlane;
+    float gLODOffset;
     uint gFrameIndex;
 }
 
@@ -99,7 +102,7 @@ float computeTextureLOD(uint2 size, float3 d, float t, out float2 anisotropicDir
 #endif
     
     float p = MIPMAP_FUNC(sqrt(dsdx * dsdx + dtdx * dtdx), sqrt(dsdy * dsdy + dtdy * dtdy));
-    return log2(ceil(p));
+    return log2(ceil(p)) + gLODOffset;
 #else
     return 0;
 #endif
@@ -113,6 +116,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 barycentrics = float3(1.0F - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
     float3 normRayDir = normalize(WorldRayDirection());
     
+    float3 pos = vertices[indices[vertId]].pos * barycentrics.x + vertices[indices[vertId + 1]].pos * barycentrics.y +
+				 vertices[indices[vertId + 2]].pos * barycentrics.z;
     float2 uvs = vertices[indices[vertId]].uvs * barycentrics.x + vertices[indices[vertId + 1]].uvs * barycentrics.y +
 				 vertices[indices[vertId + 2]].uvs * barycentrics.z;
     float3 norm = vertices[indices[vertId]].normal * barycentrics.x + vertices[indices[vertId + 1]].normal * barycentrics.y +
@@ -246,7 +251,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     RayDesc reflRay;
     reflRay.Origin = worldOrigin;
     reflRay.Direction = normalize(rv);
-    reflRay.TMin = 0.01F;
+    reflRay.TMin = gNearPlane;
     reflRay.TMax = 1.5F;
 	
     TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
@@ -272,7 +277,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         RayDesc ray;
         ray.Origin = worldOrigin;
         ray.Direction = normalize(lightSphereDirection);
-        ray.TMin = 0.01F;
+        ray.TMin = gNearPlane;
         ray.TMax = d;
     
         ShadowHitInfo shadowPayload;
@@ -297,7 +302,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         RayDesc ray;
         ray.Origin = worldOrigin;
         ray.Direction = normalize(lightSphereDirection);
-        ray.TMin = 0.01F;
+        ray.TMin = gNearPlane;
         ray.TMax = d;
     
         ShadowHitInfo shadowPayload;
@@ -322,7 +327,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         RayDesc ray;
         ray.Origin = worldOrigin;
         ray.Direction = normalize(lightSphereDirection);
-        ray.TMin = 0.01F;
+        ray.TMin = gNearPlane;
         ray.TMax = d;
         
         ShadowHitInfo shadowPayload;
@@ -364,7 +369,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
             reflRay.Direction = reflect(WorldRayDirection(), norm);
         else
             reflRay.Direction = calcReflectionDirection(WorldRayDirection(), norm, material.roughness / 20.0F, seed);
-        reflRay.TMin = 0.01F;
+        reflRay.TMin = gNearPlane;
         reflRay.TMax = 1200 * shininess;
 
         TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
@@ -393,7 +398,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
             refrRay.Direction = refract(WorldRayDirection(), norm, material.refractionIndex);
         else
             refrRay.Direction = calcRefractionDirection(WorldRayDirection(), norm, material.refractionIndex, material.roughness / 20.0F, seed);
-        refrRay.TMin = 0.01F;
+        refrRay.TMin = gNearPlane;
         refrRay.TMax = 500 * max(diffuseAlbedo.a, 40.0F);
 
         TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, refrRay, refrPayload);
@@ -417,4 +422,5 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         hitColor.rgb *= 0.4F;
     
     payload.colorAndDistance = hitColor;
+    payload.hPos = pos.xy;
 }

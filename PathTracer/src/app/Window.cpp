@@ -17,20 +17,62 @@ namespace RT
 		mWindow = this;
 	}
 
-	Window::~Window() {}
+	Window::~Window()
+	{
+		if(md3dDevice)
+			flushCommandQueue();
+		if(mSwapChain && settings.fullscreen)
+			mSwapChain->SetFullscreenState(FALSE, NULL);
+		if(feature)
+			NVSDK_NGX_D3D12_ReleaseFeature(feature);
+		if(settings.dlss)
+			NVSDK_NGX_D3D12_Shutdown();
+	}
 
 	bool Window::initialize()
 	{
 		if(!initMainWindow())
 			return false;
+		Logger::INFO.log("Initialized Window");
 		if(!initDirectX12())
 			return false;
+		Logger::INFO.log("Initialized DirectX12");
+		settings.dlssSupported = initDLSS();
+		if(!settings.dlssSupported)
+			settings.dlss = DLSS_OFF;
+		Logger::INFO.log("Initialized DLSS");
+
+		//logging
 
 		if(settings.fullscreen)
 		{
 			mSwapChain->SetFullscreenState(TRUE, NULL);
 			mSwapChain->ResizeTarget(&mFullscreenMode);
 		}
+
+		Logger::INFO.log(L"*** Settings ***");
+		Logger::INFO.log(L"Width: " + std::to_wstring(settings.width));
+		Logger::INFO.log(L"Height: " + std::to_wstring(settings.height));
+		Logger::INFO.log(L"DLSS Width: " + std::to_wstring(settings.dlssWidth));
+		Logger::INFO.log(L"DLSS Height: " + std::to_wstring(settings.dlssHeight));
+		Logger::INFO.log(L"FPS: " + std::to_wstring(settings.fps));
+		if(settings.dlss == DLSS_OFF)
+			Logger::INFO.log(L"DLSS: Off");
+		else if(settings.dlss == DLSS_PERFORMANCE)
+			Logger::INFO.log(L"DLSS: Performance");
+		else if(settings.dlss == DLSS_QUALITY)
+			Logger::INFO.log(L"DLSS: Quality");
+		else if(settings.dlss == DLSS_BALANCED)
+			Logger::INFO.log(L"DLSS: Balanced");
+		else if(settings.dlss == DLSS_ULTRA_PERFORMANCE)
+			Logger::INFO.log(L"DLSS: Ultra Performance");
+		else if(settings.dlss == DLSS_ULTRA_QUALITY)
+			Logger::INFO.log(L"DLSS: Ultra Quality");
+		Logger::INFO.log(L"vSync: " + std::wstring(settings.vSync ? L"On" : L"Off"));
+		Logger::INFO.log(L"Fullscreeen " + std::wstring(settings.fullscreen ? L"On" : L"Off"));
+		Logger::INFO.log(L"DLSS Supported: " + std::wstring(settings.dlssSupported ? L"Yes" : L"No"));
+		Logger::INFO.log(L"HDR: " + std::wstring((settings.backBufferFormat == DXGI_FORMAT_R8G8B8A8_UNORM) ? L"No" : L"Yes"));
+		Logger::INFO.log(L"Name: " + settings.name);
 		return true;
 	}
 
@@ -121,6 +163,135 @@ namespace RT
 		return true;
 	}
 
+	bool Window::initDLSS()
+	{
+		int updateDriver = 0;
+		UINT minDriverMajorI = 0;
+		UINT minDriverMinorI = 0;
+		UINT dlssSupported = 0;
+
+		NVSDK_NGX_D3D12_Init_with_ProjectID(KEYS::projectKey, NVSDK_NGX_ENGINE_TYPE_CUSTOM, "Alpha", L"", md3dDevice.Get());
+
+		NVSDK_NGX_Result result = NVSDK_NGX_D3D12_GetCapabilityParameters(&params);
+		if(result != NVSDK_NGX_Result_Success)
+			return false;
+
+		result = params->Get(NVSDK_NGX_Parameter_SuperSampling_NeedsUpdatedDriver, &updateDriver);
+		NVSDK_NGX_Result minDriverMajor = params->Get(NVSDK_NGX_Parameter_SuperSampling_MinDriverVersionMajor, &minDriverMajorI);
+		NVSDK_NGX_Result minDriverMinor = params->Get(NVSDK_NGX_Parameter_SuperSampling_MinDriverVersionMinor, &minDriverMinorI);
+		if(NVSDK_NGX_SUCCEED(result) && updateDriver && NVSDK_NGX_SUCCEED(minDriverMajor) && NVSDK_NGX_SUCCEED(minDriverMinor))
+		{
+			if(settings.dlss)
+				MessageBox(nullptr, L"It seems that your NVIDIA drivers are out of date. This version of the driver does not support DLSS and it has been disabled.", L"Driver out of date", MB_OK);
+			return false;
+		}
+
+		result = params->Get(NVSDK_NGX_Parameter_SuperSampling_Available, &dlssSupported);
+		if(NVSDK_NGX_FAILED(result) || !dlssSupported)
+			return false;
+		result = params->Get(NVSDK_NGX_Parameter_SuperSampling_FeatureInitResult, &dlssSupported);
+		if(NVSDK_NGX_FAILED(result) || !dlssSupported)
+			return false;
+
+		initDLSSFeature();
+		return true;
+	}
+
+	void Window::initDLSSFeature()
+	{
+		if(settings.dlss)
+		{
+			UINT renderWMax, renderHMax, renderWMin, renderHMin;
+			float sharpness = 0.0F;
+
+			NVSDK_NGX_PerfQuality_Value val;
+			switch(settings.dlss)
+			{
+			default:
+			case DLSS_PERFORMANCE:
+				val = NVSDK_NGX_PerfQuality_Value_MaxPerf;
+				break;
+			case DLSS_QUALITY:
+				val = NVSDK_NGX_PerfQuality_Value_MaxQuality;
+				break;
+			case DLSS_BALANCED:
+				val = NVSDK_NGX_PerfQuality_Value_Balanced;
+				break;
+			case DLSS_ULTRA_PERFORMANCE:
+				val = NVSDK_NGX_PerfQuality_Value_UltraPerformance;
+				break;
+			case DLSS_ULTRA_QUALITY:
+				val = NVSDK_NGX_PerfQuality_Value_UltraQuality;
+				break;
+			}
+
+			NVSDK_NGX_Result result = NGX_DLSS_GET_OPTIMAL_SETTINGS(params, settings.width, settings.height, val, &settings.dlssWidth, &settings.dlssHeight, &renderWMax, &renderHMax, &renderWMin, &renderHMin, &sharpness);
+		
+			if(settings.dlssWidth == 0 || settings.dlssHeight == 0)
+				throw DLSSException("Unsupported DLSS mode");
+
+			NVSDK_NGX_DLSS_Create_Params featureDesc = {};
+			featureDesc.Feature.InWidth = settings.dlssWidth;
+			featureDesc.Feature.InHeight = settings.dlssHeight;
+			featureDesc.Feature.InTargetWidth = settings.width;
+			featureDesc.Feature.InTargetHeight = settings.height;
+			featureDesc.Feature.InPerfQualityValue = val;
+			featureDesc.InFeatureCreateFlags = (settings.backBufferFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ? NVSDK_NGX_DLSS_Feature_Flags_IsHDR : NVSDK_NGX_DLSS_Feature_Flags_None) | NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+		
+			ThrowIfFailed(mDirectCmdListAlloc->Reset());
+			ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
+
+			result = NGX_D3D12_CREATE_DLSS_EXT(mCommandList.Get(), 1, 1, &feature, params, &featureDesc);
+
+			ThrowIfFailed(mCommandList->Close());
+			ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
+			mCommandQueue->ExecuteCommandLists(1, ppCommandLists);
+			
+			phaseCount = (int) (8 * ((float) settings.height / settings.dlssHeight) * ((float) settings.height / settings.dlssHeight));
+			flushCommandQueue();
+
+			createDLSSResources();
+		}
+		else
+			NVSDK_NGX_D3D12_Shutdown();
+	}
+
+	void Window::resetDLSSFeature()
+	{
+		if(feature)
+			NVSDK_NGX_D3D12_ReleaseFeature(feature);
+		initDLSSFeature();
+	}
+
+	void Window::createDLSSResources()
+	{
+		auto hp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+		//motion vector buffer
+		D3D12_RESOURCE_DESC resDesc = {};
+		resDesc.DepthOrArraySize = 1;
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		resDesc.Width = settings.dlssWidth;
+		resDesc.Height = settings.dlssHeight;
+		resDesc.SampleDesc.Count = 1;
+		resDesc.SampleDesc.Quality = 0;
+		resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		resDesc.MipLevels = 1;
+		md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mMotionVectorBuffer));
+
+		//depth buffer
+		resDesc.Format = DXGI_FORMAT_R32_FLOAT;
+		md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDepthBuffer));
+
+		//resolved buffer
+		resDesc.Format = settings.backBufferFormat;
+		resDesc.Width = settings.width;
+		resDesc.Height = settings.height;
+		md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mResolvedBuffer));
+	}
+
 	void Window::createCommandObjects()
 	{
 		D3D12_COMMAND_QUEUE_DESC queueDesc = {};
@@ -138,8 +309,8 @@ namespace RT
 		mSwapChain.Reset();
 
 		DXGI_SWAP_CHAIN_DESC1 sd;
-		sd.Width = settings.width;
-		sd.Height = settings.height;
+		sd.Width = settings.dlss ? settings.dlssWidth : settings.width;
+		sd.Height = settings.dlss ? settings.dlssHeight : settings.height;
 		sd.Format = settings.backBufferFormat;
 		sd.Stereo = false;
 		sd.SampleDesc.Count = 1;
@@ -316,6 +487,24 @@ namespace RT
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
 
+	void Window::DLSS(ID3D12Resource* outputResource, bool reset)
+	{
+		NVSDK_NGX_D3D12_DLSS_Eval_Params evalDesc = {};
+		evalDesc.Feature.pInColor = outputResource;
+		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
+		evalDesc.pInDepth = mDepthBuffer.Get();
+		evalDesc.pInMotionVectors = mMotionVectorBuffer.Get();
+		evalDesc.InJitterOffsetX = HaltonSequence(2, phase + 1) - 0.5F;
+		evalDesc.InJitterOffsetY = HaltonSequence(3, phase + 1) - 0.5F;
+		evalDesc.InRenderSubrectDimensions = { settings.dlssWidth, settings.dlssHeight };
+		evalDesc.InReset = reset ? 1 : 0;
+		evalDesc.InFrameTimeDeltaInMsec = mTimer.deltaTime();
+		
+		NGX_D3D12_EVALUATE_DLSS_EXT(mCommandList.Get(), feature, params, &evalDesc);
+
+		phase = (phase + 1) % phaseCount;
+	}
+
 	void Window::calculateFrameStats()
 	{
 		static int frameCnt = 0;
@@ -335,7 +524,7 @@ namespace RT
 			mbsUsed = info.CurrentUsage / powf(1024, 2);
 			percUsedVMem = (float) info.CurrentUsage / info.Budget;
 
-			Logger::INFO.log(L"FPS: " + std::to_wstring(mFPS) + L", " + std::to_wstring(mbsUsed) + L"MB (" + std::to_wstring(percUsedVMem * 100) + L"%)\n");
+			Logger::INFO.log(L"FPS: " + std::to_wstring(mFPS) + L", " + std::to_wstring(mbsUsed) + L"MB (" + std::to_wstring(percUsedVMem * 100) + L"%)");
 		}
 	}
 

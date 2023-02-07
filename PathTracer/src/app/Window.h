@@ -7,8 +7,21 @@
 #include "../input/Keyboard.h"
 #include "../input/Mouse.h"
 
+#include <nvsdk_ngx_helpers.h>
+
 namespace RT
 {
+	class DLSSException: public std::exception
+	{
+	public:
+		explicit inline DLSSException(const char* message): msg(message) {}
+		explicit inline DLSSException(const std::string& message) : msg(message) {}
+		inline ~DLSSException() noexcept {}
+		const char* what() const noexcept override { return msg.c_str(); }
+	private:
+		std::string msg;
+	};
+
 	class Window
 	{
 	public:
@@ -48,11 +61,17 @@ namespace RT
 
 		bool initMainWindow();
 		bool initDirectX12();
+		bool initDLSS();
+		void initDLSSFeature();
+		void resetDLSSFeature();
 
 		void getDisplayMode();
 		void toggleFullscreen();
 
 		void calculateFrameStats();
+
+		void createDLSSResources();
+		void DLSS(ID3D12Resource* outputResource, bool reset = false);
 
 		void createCommandObjects();
 		void createSwapChain();
@@ -74,6 +93,14 @@ namespace RT
 
 		static const int swapChainBufferCount = 2;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffers[swapChainBufferCount];
+
+		//dlss resources
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDepthBuffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mMotionVectorBuffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mResolvedBuffer;
+
+		NVSDK_NGX_Handle* feature = nullptr;
+		NVSDK_NGX_Parameter* params = nullptr;
 
 		HINSTANCE mWindowInst = nullptr;
 
@@ -106,5 +133,7 @@ namespace RT
 		float mbsUsed = 0;
 	private:
 		double mFrameTime = 0.0;
+		int phaseCount = 0;
+		int phase = 0;
 	};
 }

@@ -25,6 +25,7 @@
 //standard libraries
 #include <unordered_map>
 #include <stdexcept>
+#include <iostream>
 #include <comdef.h>
 #include <cassert>
 #include <fstream>
@@ -39,6 +40,7 @@
 
 #include "settings.h"
 #include "d3dutil.h"
+#include "keys.h"
 
 //macros
 #ifndef ThrowIfFailed
