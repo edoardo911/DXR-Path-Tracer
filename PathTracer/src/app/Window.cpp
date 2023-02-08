@@ -31,19 +31,21 @@ namespace RT
 
 	bool Window::initialize()
 	{
-		phaseCount = settings.RTAA;
+		settings.load();
+
 		if(!initMainWindow())
 			return false;
 		Logger::INFO.log("Initialized Window");
+
 		if(!initDirectX12())
 			return false;
 		Logger::INFO.log("Initialized DirectX12");
+
 		settings.dlssSupported = initDLSS();
 		if(!settings.dlssSupported)
 			settings.dlss = DLSS_OFF;
+		phaseCount = settings.dlss ? (8 * (settings.width / settings.dlssWidth) * (settings.width / settings.dlssWidth)) : settings.RTAA;
 		Logger::INFO.log("Initialized DLSS");
-
-		//logging
 
 		if(settings.fullscreen)
 		{

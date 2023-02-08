@@ -43,16 +43,46 @@ namespace RT
 	protected:
 		settings_struct() = default;
 
-		void saveSize()
+		inline void saveSize()
 		{
 			lastW = width;
 			lastH = height;
 		}
 
-		void restoreSize()
+		inline void restoreSize()
 		{
 			width = lastW;
 			height = lastH;
+		}
+
+		inline void load()
+		{
+			std::fstream config;
+			config.open("res/settings.conf", std::ios::in);
+
+			if(config)
+			{
+				for(std::string line; std::getline(config, line, '\n'); )
+				{
+					std::string token = line.substr(0, line.find('='));
+					if(token == "width")
+						width = std::stoi(line.substr(line.find('=') + 1));
+					else if(token == "height")
+						height = std::stoi(line.substr(line.find('=') + 1));
+					else if(token == "fps")
+						fps = std::stoi(line.substr(line.find('=') + 1));
+					else if(token == "dlss")
+						dlss = std::stoi(line.substr(line.find('=') + 1));
+					else if(token == "rtaa")
+						RTAA = std::stoi(line.substr(line.find('=') + 1));
+					else if(token == "vsync")
+						vSync = (line.substr(line.find('=') + 1) == "false") ? false : true;
+					else if(token == "fullscreen")
+						fullscreen = (line.substr(line.find('=') + 1) == "false") ? false : true;
+				}
+			}
+			else
+				throw std::exception("Config file not found");
 		}
 
 		UINT32 lastW = 1280;
