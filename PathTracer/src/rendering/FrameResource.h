@@ -44,6 +44,7 @@ namespace RT
 		float farPlane;
 		float LODOffset = 0;
 		UINT32 frameIndex = 1;
+		DirectX::XMFLOAT2 jitter;
 	};
 
 	struct ObjectConstants

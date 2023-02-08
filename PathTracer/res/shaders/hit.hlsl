@@ -3,7 +3,7 @@
 
 StructuredBuffer<Vertex> vertices: register(t0);
 StructuredBuffer<int> indices: register(t1);
-StructuredBuffer<Material> gMaterials : register(t0, space1);
+StructuredBuffer<Material> gMaterials: register(t0, space1);
 
 RaytracingAccelerationStructure SceneBVH: register(t2);
 
@@ -24,6 +24,7 @@ cbuffer cbPass: register(b0)
     float gFarPlane;
     float gLODOffset;
     uint gFrameIndex;
+    float2 jitter;
 }
 
 cbuffer objPass: register(b1)
@@ -116,8 +117,6 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 barycentrics = float3(1.0F - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
     float3 normRayDir = normalize(WorldRayDirection());
     
-    float3 pos = vertices[indices[vertId]].pos * barycentrics.x + vertices[indices[vertId + 1]].pos * barycentrics.y +
-				 vertices[indices[vertId + 2]].pos * barycentrics.z;
     float2 uvs = vertices[indices[vertId]].uvs * barycentrics.x + vertices[indices[vertId + 1]].uvs * barycentrics.y +
 				 vertices[indices[vertId + 2]].uvs * barycentrics.z;
     float3 norm = vertices[indices[vertId]].normal * barycentrics.x + vertices[indices[vertId + 1]].normal * barycentrics.y +
@@ -260,7 +259,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     //ambient light
     float4 ambient = gAmbientLight * diffuseAlbedo;
-    float4 hitColor = float4(ambient.rgb, RayTCurrent());
+    float4 hitColor = float4(ambient.rgb, 1.0F);
     
     //shadows
     float3 shadowFactor = float3(1.0F, 1.0F, 1.0F);
@@ -422,5 +421,4 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         hitColor.rgb *= 0.4F;
     
     payload.colorAndDistance = hitColor;
-    payload.hPos = pos.xy;
 }

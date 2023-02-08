@@ -31,6 +31,7 @@ namespace RT
 		UINT32 dlssHeight = 0;
 		UINT8 fps = 60;
 		UINT8 dlss = DLSS_BALANCED;
+		UINT8 RTAA = 4;
 
 		bool vSync = false;
 		bool fullscreen = false;

@@ -236,7 +236,9 @@ namespace RT
 			featureDesc.Feature.InTargetWidth = settings.width;
 			featureDesc.Feature.InTargetHeight = settings.height;
 			featureDesc.Feature.InPerfQualityValue = val;
-			featureDesc.InFeatureCreateFlags = (settings.backBufferFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ? NVSDK_NGX_DLSS_Feature_Flags_IsHDR : NVSDK_NGX_DLSS_Feature_Flags_None) | NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+			featureDesc.InFeatureCreateFlags = (settings.backBufferFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ? NVSDK_NGX_DLSS_Feature_Flags_IsHDR : NVSDK_NGX_DLSS_Feature_Flags_None)
+												| NVSDK_NGX_DLSS_Feature_Flags_AutoExposure
+												| NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
 		
 			ThrowIfFailed(mDirectCmdListAlloc->Reset());
 			ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
@@ -247,7 +249,7 @@ namespace RT
 			ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
 			mCommandQueue->ExecuteCommandLists(1, ppCommandLists);
 			
-			phaseCount = (int) (8 * ((float) settings.height / settings.dlssHeight) * ((float) settings.height / settings.dlssHeight));
+			phaseCount = (int) (8 * ((float) settings.width / settings.dlssWidth) * ((float) settings.width / settings.dlssWidth));
 			flushCommandQueue();
 
 			createDLSSResources();
@@ -487,22 +489,20 @@ namespace RT
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
 
-	void Window::DLSS(ID3D12Resource* outputResource, bool reset)
+	void Window::DLSS(ID3D12Resource* outputResource, float jitterX, float jitterY, bool reset)
 	{
 		NVSDK_NGX_D3D12_DLSS_Eval_Params evalDesc = {};
 		evalDesc.Feature.pInColor = outputResource;
 		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
 		evalDesc.pInDepth = mDepthBuffer.Get();
 		evalDesc.pInMotionVectors = mMotionVectorBuffer.Get();
-		evalDesc.InJitterOffsetX = HaltonSequence(2, phase + 1) - 0.5F;
-		evalDesc.InJitterOffsetY = HaltonSequence(3, phase + 1) - 0.5F;
+		evalDesc.InJitterOffsetX = jitterX;
+		evalDesc.InJitterOffsetY = jitterY;
 		evalDesc.InRenderSubrectDimensions = { settings.dlssWidth, settings.dlssHeight };
 		evalDesc.InReset = reset ? 1 : 0;
 		evalDesc.InFrameTimeDeltaInMsec = mTimer.deltaTime();
 		
 		NGX_D3D12_EVALUATE_DLSS_EXT(mCommandList.Get(), feature, params, &evalDesc);
-
-		phase = (phase + 1) % phaseCount;
 	}
 
 	void Window::calculateFrameStats()

@@ -7,7 +7,6 @@
 struct HitInfo
 {
     float4 colorAndDistance;
-    float2 hPos;
     uint recursionDepth;
 };
 
@@ -20,6 +19,11 @@ struct ShadowHitInfo
 struct AOHitInfo
 {
     bool isHit;
+};
+
+struct PosPayload
+{
+    float3 hPosAndT;
 };
 
 //other structs

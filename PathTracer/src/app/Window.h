@@ -71,7 +71,7 @@ namespace RT
 		void calculateFrameStats();
 
 		void createDLSSResources();
-		void DLSS(ID3D12Resource* outputResource, bool reset = false);
+		void DLSS(ID3D12Resource* outputResource, float jitterX = 0.0F, float jitterY = 0.0F, bool reset = false);
 
 		void createCommandObjects();
 		void createSwapChain();
@@ -131,9 +131,9 @@ namespace RT
 		float mFPS = 0;
 		float percUsedVMem = 0;
 		float mbsUsed = 0;
+
+		int phaseCount = settings.RTAA;
 	private:
 		double mFrameTime = 0.0;
-		int phaseCount = 0;
-		int phase = 0;
 	};
 }

@@ -66,6 +66,7 @@ private:
 	void createHitSignature(ID3D12RootSignature** pRootSig);
 	void createAOHitSignature(ID3D12RootSignature** pRootSig);
 	void createShadowHitSignature(ID3D12RootSignature** pRootSig);
+	void createPosHitSignature(ID3D12RootSignature** pRootSig);
 	void createRaytracingPipeline();
 	void createShaderBindingTable();
 
@@ -108,6 +109,9 @@ private:
 	UINT mFrameIndex = 0;
 
 	bool mCameraMode = false;
+
+	int phase = 0;
+	XMFLOAT2 jitter = { 0, 0 };
 };
 
 int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance, _In_ PSTR cmdLine, _In_ int showCmd)
@@ -377,7 +381,7 @@ void App::createTopLevelAS(const std::vector<std::tuple<Microsoft::WRL::ComPtr<I
 	for(size_t i = 0; i < instances.size(); ++i)
 	{
 		const auto& [res, world, type] = instances[i];
-		mTopLevelASGenerator.AddInstance(res.Get(), world, static_cast<UINT>(i), static_cast<UINT>(i * 3), 0xFF);
+		mTopLevelASGenerator.AddInstance(res.Get(), world, static_cast<UINT>(i), static_cast<UINT>(i * 4), 0xFF);
 	}
 
 	UINT64 scratchSize, resultSize, instanceDescsSize;
@@ -456,6 +460,14 @@ void App::createShadowHitSignature(ID3D12RootSignature** pRootSig)
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
+void App::createPosHitSignature(ID3D12RootSignature** pRootSig)
+{
+	nv_helpers_dx12::RootSignatureGenerator rsc;
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
+	rsc.Generate(md3dDevice.Get(), true, pRootSig);
+}
+
 void App::createRaytracingPipeline()
 {
 	nv_helpers_dx12::RayTracingPipelineGenerator pipeline(md3dDevice.Get());
@@ -465,6 +477,7 @@ void App::createRaytracingPipeline()
 	mShaders["miss"] = nv_helpers_dx12::CompileShaderLibrary(L"res/shaders/miss.hlsl");
 	mShaders["closestHit"] = nv_helpers_dx12::CompileShaderLibrary(L"res/shaders/hit.hlsl");
 	mShaders["shadow"] = nv_helpers_dx12::CompileShaderLibrary(L"res/shaders/shadow.hlsl");
+	mShaders["pos"] = nv_helpers_dx12::CompileShaderLibrary(L"res/shaders/pos.hlsl");
 
 	pipeline.AddLibrary(mShaders["rayGen"].Get(), { L"RayGen" });
 	pipeline.AddLibrary(mShaders["miss"].Get(), { L"Miss" });
@@ -472,6 +485,7 @@ void App::createRaytracingPipeline()
 	pipeline.AddLibrary(mShaders["aoMiss"].Get(), { L"AOMiss" });
 	pipeline.AddLibrary(mShaders["aoClosestHit"].Get(), { L"AOClosestHit" });
 	pipeline.AddLibrary(mShaders["shadow"].Get(), { L"ShadowClosestHit", L"ShadowMiss" });
+	pipeline.AddLibrary(mShaders["pos"].Get(), { L"PosClosestHit", L"PosMiss" });
 
 	createRayGenSignature(&mSignatures["rayGen"]);
 	createMissSignature(&mSignatures["miss"]);
@@ -479,19 +493,22 @@ void App::createRaytracingPipeline()
 	createHitSignature(&mSignatures["closestHit"]);
 	createAOHitSignature(&mSignatures["aoClosestHit"]);
 	createShadowHitSignature(&mSignatures["shadowClosestHit"]);
+	createPosHitSignature(&mSignatures["posClosestHit"]);
 
 	pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
 	pipeline.AddHitGroup(L"AOHitGroup", L"AOClosestHit");
 	pipeline.AddHitGroup(L"ShadowHitGroup", L"ShadowClosestHit");
+	pipeline.AddHitGroup(L"PosHitGroup", L"PosClosestHit");
 
 	pipeline.AddRootSignatureAssociation(mSignatures["rayGen"].Get(), { L"RayGen" });
 	pipeline.AddRootSignatureAssociation(mSignatures["miss"].Get(), { L"Miss" });
-	pipeline.AddRootSignatureAssociation(mSignatures["aoMiss"].Get(), { L"AOMiss", L"ShadowMiss" });
+	pipeline.AddRootSignatureAssociation(mSignatures["aoMiss"].Get(), { L"AOMiss", L"ShadowMiss", L"PosMiss" });
 	pipeline.AddRootSignatureAssociation(mSignatures["closestHit"].Get(), { L"HitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["aoClosestHit"].Get(), { L"AOHitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
+	pipeline.AddRootSignatureAssociation(mSignatures["posClosestHit"].Get(), { L"PosHitGroup" });
 
-	pipeline.SetMaxPayloadSize(6 * sizeof(float) + 1 * sizeof(UINT));
+	pipeline.SetMaxPayloadSize(4 * sizeof(float) + 1 * sizeof(UINT));
 	pipeline.SetMaxAttributeSize(2 * sizeof(float));
 	pipeline.SetMaxRecursionDepth(4);
 
@@ -513,6 +530,7 @@ void App::createShaderBindingTable()
 		mSBTHelper.AddMissProgram(L"Miss", {});
 		mSBTHelper.AddMissProgram(L"ShadowMiss", {});
 		mSBTHelper.AddMissProgram(L"AOMiss", {});
+		mSBTHelper.AddMissProgram(L"PosMiss", {});
 
 		for(auto& i : mRTInstances)
 		{
@@ -532,6 +550,10 @@ void App::createShaderBindingTable()
 									(void*) (mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress())
 								   });
 			mSBTHelper.AddHitGroup(L"AOHitGroup", {});
+			mSBTHelper.AddHitGroup(L"PosHitGroup", {
+									(void*) (i->buffers->vertexBuffer->GetGPUVirtualAddress()),
+									(void*) (i->buffers->indexBuffer->GetGPUVirtualAddress()),
+								   });
 		}
 
 		UINT32 sbtSize0 = mSBTHelper.ComputeSBTSize();
@@ -653,6 +675,8 @@ void App::update()
 	{
 		mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % NUM_FRAME_RESOURCES;
 
+		jitter = { HaltonSequence(2, phase + 1) - 0.5F, HaltonSequence(3, phase + 1) - 0.5F };
+
 		mCam->updateViewMatrix();
 
 		updateMainPassCB();
@@ -703,7 +727,8 @@ void App::draw()
 	mCommandList->DispatchRays(&desc);
 
 	if(settings.dlss)
-		DLSS(mOutputResource[0].Get());
+		DLSS(mOutputResource[0].Get(), jitter.x, jitter.y);
+	phase = (phase + 1) % phaseCount;
 
 	if(settings.dlss)
 	{
@@ -745,6 +770,8 @@ void App::updateMainPassCB()
 		mMainPassCB.frameIndex = 1;
 
 		XMMATRIX view = mCam->getView();
+
+		XMFLOAT4X4 PROJ = mCam->getProj4x4();
 		XMMATRIX proj = mCam->getProj();
 
 		XMVECTOR viewDet = XMMatrixDeterminant(view);
@@ -763,6 +790,8 @@ void App::updateMainPassCB()
 		if(settings.dlss)
 			mMainPassCB.LODOffset = log2f((float) settings.dlssWidth / settings.width) - 0.5F;
 	}
+
+	mMainPassCB.jitter = jitter;
 
 	mCurrFrameResource->passCB->copyData(0, mMainPassCB);
 }
