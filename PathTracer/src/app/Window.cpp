@@ -31,6 +31,7 @@ namespace RT
 
 	bool Window::initialize()
 	{
+		phaseCount = settings.RTAA;
 		if(!initMainWindow())
 			return false;
 		Logger::INFO.log("Initialized Window");

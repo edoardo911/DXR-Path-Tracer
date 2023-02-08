@@ -35,6 +35,8 @@ private:
 	void draw() override;
 	void onResize() override;
 
+	void allocateOutputResources();
+
 	void keyboardInput();
 	void mouseInput();
 
@@ -585,36 +587,15 @@ void App::loadTextures()
 
 void App::buildDescriptorHeap()
 {
-	if(!mHeap)
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-		heapDesc.NumDescriptors = 10;
-		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
-	}
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = 10;
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
-
-	//output buffer and accumulation buffer
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-
-	md3dDevice->CreateUnorderedAccessView(mOutputResource[0].Get(), nullptr, &uavDesc, hDescriptor);
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateUnorderedAccessView(mOutputResource[1].Get(), nullptr, &uavDesc, hDescriptor);
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateUnorderedAccessView(mOutputResource[2].Get(), nullptr, &uavDesc, hDescriptor);
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	if(settings.dlss)
-	{
-		md3dDevice->CreateUnorderedAccessView(mDepthBuffer.Get(), nullptr, &uavDesc, hDescriptor);
-		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-		md3dDevice->CreateUnorderedAccessView(mMotionVectorBuffer.Get(), nullptr, &uavDesc, hDescriptor);
-		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	}
-	else
-		hDescriptor.Offset(2, mCbvSrvUavDescriptorSize);
+	allocateOutputResources();
+	hDescriptor.Offset(5, mCbvSrvUavDescriptorSize);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -656,6 +637,29 @@ void App::buildDescriptorHeap()
 	md3dDevice->CreateShaderResourceView(mCubemap->Resource.Get(), &srvDesc, hDescriptor);
 }
 
+void App::allocateOutputResources()
+{
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
+
+	//output buffer and accumulation buffer
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+	md3dDevice->CreateUnorderedAccessView(mOutputResource[0].Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mOutputResource[1].Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mOutputResource[2].Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	if(settings.dlss)
+	{
+		md3dDevice->CreateUnorderedAccessView(mDepthBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+		md3dDevice->CreateUnorderedAccessView(mMotionVectorBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	}
+}
+
 void App::buildFrameResources()
 {
 	for(int i = 0; i < NUM_FRAME_RESOURCES; ++i)
@@ -675,7 +679,8 @@ void App::update()
 	{
 		mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % NUM_FRAME_RESOURCES;
 
-		jitter = { HaltonSequence(2, phase + 1) - 0.5F, HaltonSequence(3, phase + 1) - 0.5F };
+		if(settings.RTAA > 0)
+			jitter = { HaltonSequence(2, phase + 1) - 0.5F, HaltonSequence(3, phase + 1) - 0.5F };
 
 		mCam->updateViewMatrix();
 
@@ -728,7 +733,8 @@ void App::draw()
 
 	if(settings.dlss)
 		DLSS(mOutputResource[0].Get(), jitter.x, jitter.y);
-	phase = (phase + 1) % phaseCount;
+	if(settings.dlss || settings.RTAA > 0)
+		phase = (phase + 1) % phaseCount;
 
 	if(settings.dlss)
 	{
@@ -848,7 +854,7 @@ void App::onResize()
 			resetDLSSFeature();
 
 		buildOutputResource();
-		buildDescriptorHeap();
+		allocateOutputResources();
 	}
 }
 

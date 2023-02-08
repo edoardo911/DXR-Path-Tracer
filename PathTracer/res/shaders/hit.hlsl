@@ -259,7 +259,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     //ambient light
     float4 ambient = gAmbientLight * diffuseAlbedo;
-    float4 hitColor = float4(ambient.rgb, 1.0F);
+    float4 hitColor = float4(ambient.rgb, RayTCurrent());
     
     //shadows
     float3 shadowFactor = float3(1.0F, 1.0F, 1.0F);

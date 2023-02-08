@@ -132,7 +132,7 @@ namespace RT
 		float percUsedVMem = 0;
 		float mbsUsed = 0;
 
-		int phaseCount = settings.RTAA;
+		int phaseCount = 0;
 	private:
 		double mFrameTime = 0.0;
 	};
