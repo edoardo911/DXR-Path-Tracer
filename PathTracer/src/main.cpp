@@ -680,7 +680,7 @@ void App::update()
 		mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % NUM_FRAME_RESOURCES;
 
 		if(settings.dlss || settings.RTAA > 1)
-			jitter = { HaltonSequence(2, phase + 1) - 0.5F, HaltonSequence(3, phase + 1) - 0.5F };
+			jitter = { HaltonSequence(2, phase + 1) - 0.5F, HaltonSequence(2, phase + 1) - 0.5F };
 
 		mCam->updateViewMatrix();
 

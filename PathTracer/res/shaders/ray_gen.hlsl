@@ -62,7 +62,7 @@ void RayGen()
     pp.hPosAndT = float3(0.0F, 0.0F, -1.0F);
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 3, 0, 3, ray, pp);
     
-    if (pp.hPosAndT.z < 0.0F)
+    if(pp.hPosAndT.z < 0.0F)
         gDepthBuffer[launchIndex] = 1.0F;
     else
         gDepthBuffer[launchIndex] = min(pp.hPosAndT.z / (gFarPlane - gNearPlane), 1.0F);

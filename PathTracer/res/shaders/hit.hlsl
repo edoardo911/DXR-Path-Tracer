@@ -261,6 +261,20 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float4 ambient = gAmbientLight * diffuseAlbedo;
     float4 hitColor = float4(ambient.rgb, RayTCurrent());
     
+    //ambient occlusion
+    RayDesc aoRay;
+    aoRay.Origin = worldOrigin;
+    aoRay.Direction = calcRTAODirection(seed);
+    aoRay.TMin = 0.001F;
+    aoRay.TMax = 0.071F;
+
+    AOHitInfo aoPayload;
+    aoPayload.isHit = false;
+
+    TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 2, 0, 2, aoRay, aoPayload);
+    if (aoPayload.isHit)
+        hitColor.rgb *= 0.1F;
+    
     //shadows
     float3 shadowFactor = float3(1.0F, 1.0F, 1.0F);
     
@@ -405,20 +419,6 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         float distanceFactor = 1.0F - clamp(refrPayload.colorAndDistance.w / max(500 * diffuseAlbedo.a, 40.0F), 0.0F, 1.0F);
         hitColor.rgb = lerp(hitColor.rgb, refrPayload.colorAndDistance.rgb, visibility * fresnelFactor * distanceFactor);
     }
-            
-    //ambient occlusion
-    RayDesc aoRay;
-    aoRay.Origin = worldOrigin;
-    aoRay.Direction = calcRTAODirection(seed);
-    aoRay.TMin = 0.001F;
-    aoRay.TMax = 0.071F;
-
-    AOHitInfo aoPayload;
-    aoPayload.isHit = false;
-
-    TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 2, 0, 2, aoRay, aoPayload);
-    if(aoPayload.isHit)
-        hitColor.rgb *= 0.4F;
     
     payload.colorAndDistance = hitColor;
 }
