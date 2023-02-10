@@ -494,13 +494,15 @@ namespace RT
 
 	void Window::DLSS(ID3D12Resource* outputResource, float jitterX, float jitterY, bool reset)
 	{
+		float resolutionFactor = 1.0F - ((float) settings.dlssWidth / settings.width);
+
 		NVSDK_NGX_D3D12_DLSS_Eval_Params evalDesc = {};
 		evalDesc.Feature.pInColor = outputResource;
 		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
 		evalDesc.pInDepth = mDepthBuffer.Get();
 		evalDesc.pInMotionVectors = mMotionVectorBuffer.Get();
-		evalDesc.InJitterOffsetX = jitterX;
-		evalDesc.InJitterOffsetY = jitterY;
+		evalDesc.InJitterOffsetX = jitterX * resolutionFactor;
+		evalDesc.InJitterOffsetY = jitterY * resolutionFactor;
 		evalDesc.InRenderSubrectDimensions = { settings.dlssWidth, settings.dlssHeight };
 		evalDesc.InReset = reset ? 1 : 0;
 		evalDesc.InFrameTimeDeltaInMsec = mTimer.deltaTime();
