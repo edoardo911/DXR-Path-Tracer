@@ -198,7 +198,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
                 lightPower *= 0.9F;
             else
                 lightPower *= 0.75F;
-            float3 color = diffuseAlbedo.rgb * gLights[i].Strength * lightPower;
+            float3 color = lerp(float3(1, 1, 1), diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0F)) * gLights[i].Strength * lightPower;
             payload.colorAndDistance.rgb += color.rgb;
         }
     #endif
@@ -214,7 +214,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
                 lightPower *= 0.9F;
             else
                 lightPower *= 0.75F;
-            float3 color = diffuseAlbedo.rgb * gLights[i].Strength * lightPower;
+            float3 color = lerp(float3(1, 1, 1), diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0F)) * gLights[i].Strength * lightPower;
             payload.colorAndDistance.rgb += color.rgb * min(3.5F / (RayTCurrent() + length(gLights[i].Position - worldOrigin)), 1.0F);
         }
     #endif
@@ -231,7 +231,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
                 lightPower *= 0.9F;
             else
                 lightPower *= 0.75F;
-            float3 color = diffuseAlbedo.rgb * gLights[i].Strength * lightPower * spotFactor;
+            float3 color = lerp(float3(1, 1, 1), diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0F)) * gLights[i].Strength * lightPower * spotFactor;
             payload.colorAndDistance.rgb += color.rgb * min(3.5F / (RayTCurrent() + length(gLights[i].Position - worldOrigin)), 1.0F);
         }
     #endif
