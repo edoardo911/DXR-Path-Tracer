@@ -381,14 +381,18 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         if((material.flags & 0x0000001) != 0)
             reflRay.Direction = reflect(WorldRayDirection(), norm);
         else
-            reflRay.Direction = calcReflectionDirection(WorldRayDirection(), norm, material.roughness / 20.0F, seed);
+            reflRay.Direction = calcReflectionDirection(WorldRayDirection(), norm, material.roughness / 10.0F, seed);
         reflRay.TMin = gNearPlane;
-        reflRay.TMax = 1200 * shininess;
+        reflRay.TMax = 50 * shininess;
 
         TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
         
-        float distanceFactor = 1.0F - clamp(reflPayload.colorAndDistance.w / (1200 * shininess), 0.0F, 1.0F);
-        hitColor.rgb = lerp(hitColor.rgb, reflPayload.colorAndDistance.rgb, fresnelFactor * material.metallic * distanceFactor);
+        float distanceFactor;
+        if(reflPayload.colorAndDistance.a > 0)
+            distanceFactor = 1.0F - clamp(reflPayload.colorAndDistance.a / (50 * shininess), 0.0F, 1.0F);
+        else
+            distanceFactor = min(shininess * 3, 1.0F);
+        hitColor.rgb = lerp(hitColor.rgb, reflPayload.colorAndDistance.rgb, fresnelFactor * material.metallic * distanceFactor);    
     }
     
     //refraction
@@ -410,13 +414,17 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         if((material.flags & 0x0000002) != 0)
             refrRay.Direction = refract(WorldRayDirection(), norm, material.refractionIndex);
         else
-            refrRay.Direction = calcRefractionDirection(WorldRayDirection(), norm, material.refractionIndex, material.roughness / 20.0F, seed);
+            refrRay.Direction = calcRefractionDirection(WorldRayDirection(), norm, material.refractionIndex, material.roughness / 10.0F, seed);
         refrRay.TMin = gNearPlane;
-        refrRay.TMax = 500 * max(diffuseAlbedo.a, 40.0F);
+        refrRay.TMax = 50 * visibility;
 
         TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, refrRay, refrPayload);
 		
-        float distanceFactor = 1.0F - clamp(refrPayload.colorAndDistance.w / max(500 * diffuseAlbedo.a, 40.0F), 0.0F, 1.0F);
+        float distanceFactor;
+        if(refrPayload.colorAndDistance.a > 0)
+            distanceFactor = 1.0F - clamp(refrPayload.colorAndDistance.a / (50 * visibility), 0.0F, 1.0F);
+        else
+            distanceFactor = visibility;
         hitColor.rgb = lerp(hitColor.rgb, refrPayload.colorAndDistance.rgb, visibility * fresnelFactor * distanceFactor);
     }
     

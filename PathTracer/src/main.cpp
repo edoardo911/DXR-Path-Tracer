@@ -320,6 +320,8 @@ void App::buildMaterials()
 	auto redBall = std::make_unique<Material>();
 	redBall->DiffuseAlbedo = { 1.0F, 0.0F, 0.0F, 0.2F };
 	redBall->matCBIndex = 1;
+	redBall->Roughness = 0.05F;
+	redBall->refractionIndex = 0.4F;
 	mMaterials.push_back(std::move(redBall));
 
 	auto wall = std::make_unique<Material>();
@@ -332,7 +334,7 @@ void App::buildMaterials()
 	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.1F };
 	metallicBall->metallic = 0.8F;
 	metallicBall->matCBIndex = 3;
-	metallicBall->Roughness = 0.2F;
+	metallicBall->Roughness = 0.3F;
 	mMaterials.push_back(std::move(metallicBall));
 }
 
@@ -899,6 +901,7 @@ void App::mouseInput()
 	if(mCameraMode)
 	{
 		float sens = 20.0F;
+		if(settings.vSync && settings.fullscreen) sens *= 0.5F;
 
 		float dx = mTimer.deltaTime() * XMConvertToRadians(sens * (static_cast<float>(mouse.getMousePos().x) - (settings.width / 2)));
 		float dy = mTimer.deltaTime() * XMConvertToRadians(sens * (static_cast<float>(mouse.getMousePos().y) - (settings.height / 2)));
