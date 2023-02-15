@@ -17,5 +17,5 @@ void PosClosestHit(inout PosPayload payload, Attributes attrib)
 [shader("miss")]
 void PosMiss(inout PosPayload payload: SV_RayPayload)
 {
-    payload.hPosAndT.xy = RayTCurrent() * 9999.0F;
+    payload.hPosAndT.xy = normalize(RayTCurrent()) * 9999.9F;
 }

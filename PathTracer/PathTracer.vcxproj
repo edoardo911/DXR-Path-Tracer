@@ -108,13 +108,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\include;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\lib\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>nvsdk_ngx_d_dbg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\lib\debug;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Lib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>nvsdk_ngx_d_dbg.lib;NRD.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -126,7 +126,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\include;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -134,7 +134,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>nvsdk_ngx_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\lib\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\lib\release;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -152,7 +152,6 @@
     <ClCompile Include="src\rendering\Camera.cpp" />
     <ClCompile Include="src\rendering\FrameResource.cpp" />
     <ClCompile Include="src\utils\GeometryGenerator.cpp" />
-    <ClCompile Include="src\utils\MathUtil.cpp" />
     <ClCompile Include="src\utils\ModelLoader.cpp" />
     <ClCompile Include="src\utils\TextureLoader.cpp" />
     <ClCompile Include="src\utils\Timer.cpp" />
@@ -176,7 +175,6 @@
     <ClInclude Include="src\utils\GeometryGenerator.h" />
     <ClInclude Include="src\utils\header.h" />
     <ClInclude Include="src\utils\keys.h" />
-    <ClInclude Include="src\utils\MathUtil.h" />
     <ClInclude Include="src\utils\ModelLoader.h" />
     <ClInclude Include="src\utils\settings.h" />
     <ClInclude Include="src\utils\TextureLoader.h" />

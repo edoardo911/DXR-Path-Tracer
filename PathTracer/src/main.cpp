@@ -11,12 +11,17 @@
 #include "rendering/FrameResource.h"
 #include "rendering/Camera.h"
 
-#include "raytracing/TopLevelASGenerator.h"
-#include "raytracing/BottomLevelASGenerator.h"
-#include "raytracing/DXRHelper.h"
-#include "raytracing/RaytracingPipelineGenerator.h"
-#include "raytracing/RootSignatureGenerator.h"
 #include "raytracing/ShaderBindingTableGenerator.h"
+#include "raytracing/RaytracingPipelineGenerator.h"
+#include "raytracing/BottomLevelASGenerator.h"
+#include "raytracing/RootSignatureGenerator.h"
+#include "raytracing/TopLevelASGenerator.h"
+#include "raytracing/DXRHelper.h"
+
+#include <NRD.h>
+
+#include <NRDSettings.h>
+#include <NRDDescs.h>
 
 using namespace RT;
 using namespace DirectX;
