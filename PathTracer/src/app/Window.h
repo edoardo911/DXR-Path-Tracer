@@ -9,6 +9,11 @@
 
 #include <nvsdk_ngx_helpers.h>
 
+#include <NRD.h>
+
+#include <NRDSettings.h>
+#include <NRDDescs.h>
+
 namespace RT
 {
 	class DLSSException: public std::exception
@@ -62,6 +67,7 @@ namespace RT
 		bool initMainWindow();
 		bool initDirectX12();
 		bool initDLSS();
+		bool initDenoiser();
 		void initDLSSFeature();
 		void resetDLSSFeature();
 
@@ -71,6 +77,8 @@ namespace RT
 		void calculateFrameStats();
 
 		void createDLSSResources();
+		void createDenoiserPipelines();
+		void createDenoiserResources();
 		void DLSS(ID3D12Resource* outputResource, float jitterX = 0.0F, float jitterY = 0.0F, bool reset = false);
 
 		void createCommandObjects();
@@ -98,6 +106,12 @@ namespace RT
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDepthBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mMotionVectorBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mResolvedBuffer;
+
+		//denoiser
+		nrd::Denoiser* mDenoiser;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12RootSignature>> mDenoiserRootSignatures;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12PipelineState>> mDenoiserPipelines;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> mDenoiserResources;
 
 		NVSDK_NGX_Handle* feature = nullptr;
 		NVSDK_NGX_Parameter* params = nullptr;

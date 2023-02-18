@@ -42,17 +42,7 @@ void RayGen()
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
     
-    if(gFrameIndex == 1)
-    {
-        gSumBuffer[launchIndex] = payload.colorAndDistance;
-        gOutput[launchIndex] = payload.colorAndDistance;
-    }
-    else
-    {
-        float3 color = gSumBuffer[launchIndex].rgb + payload.colorAndDistance.rgb;
-        gSumBuffer[launchIndex].rgb = color;
-        gOutput[launchIndex].rgb = clamp(color / gFrameIndex, 0.0F, 1.0F);
-    }
+    gOutput[launchIndex] = payload.colorAndDistance;
     
     //non jittered informations
     target = mul(gInvProj, float4(d.x, -d.y, 1, 1));

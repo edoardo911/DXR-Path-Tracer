@@ -27,6 +27,7 @@ namespace RT
 			NVSDK_NGX_D3D12_ReleaseFeature(feature);
 		if(settings.dlss)
 			NVSDK_NGX_D3D12_Shutdown();
+		nrd::DestroyDenoiser(*mDenoiser);
 	}
 
 	bool Window::initialize()
@@ -40,6 +41,10 @@ namespace RT
 		if(!initDirectX12())
 			return false;
 		Logger::INFO.log("Initialized DirectX12");
+
+		if(!initDenoiser())
+			return false;
+		Logger::INFO.log("Initialized Denoiser");
 
 		settings.dlssSupported = initDLSS();
 		if(!settings.dlssSupported)
@@ -268,6 +273,82 @@ namespace RT
 		initDLSSFeature();
 	}
 
+	bool Window::initDenoiser()
+	{
+		nrd::MethodDesc methodDesc = {};
+		methodDesc.method = nrd::Method::REBLUR_DIFFUSE;
+		methodDesc.fullResolutionWidth = settings.dlss ? settings.dlssWidth : settings.width;
+		methodDesc.fullResolutionHeight = settings.dlss ? settings.dlssHeight : settings.height;
+
+		nrd::DenoiserCreationDesc desc = {};
+		desc.requestedMethodsNum = 1;
+		desc.requestedMethods = &methodDesc;
+
+		if(nrd::CreateDenoiser(desc, mDenoiser) != nrd::Result::SUCCESS)
+			return false;
+
+		createDenoiserPipelines();
+		createDenoiserResources();
+		return true;
+	}
+
+	void Window::createDenoiserPipelines()
+	{
+		nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
+
+		mDenoiserPipelines.clear();
+		mDenoiserRootSignatures.clear();
+		mDenoiserPipelines.resize(desc.pipelinesNum);
+		mDenoiserRootSignatures.resize(desc.pipelinesNum);
+
+		CD3DX12_DESCRIPTOR_RANGE samplers;
+		samplers.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, desc.samplersNum, desc.samplersBaseRegisterIndex, desc.samplersSpaceIndex);
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC computeDesc = {};
+		for(UINT32 i = 0; i < desc.pipelinesNum; ++i)
+		{
+			nrd::PipelineDesc pipelineDesc = desc.pipelines[i];
+			std::vector<CD3DX12_DESCRIPTOR_RANGE> ranges(pipelineDesc.resourceRangesNum);
+
+			for(UINT32 j = 0; j < pipelineDesc.resourceRangesNum; ++j)
+			{
+				nrd::ResourceRangeDesc rangeDesc = pipelineDesc.resourceRanges[j];
+				ranges[j].Init((rangeDesc.descriptorType == nrd::DescriptorType::TEXTURE) ? D3D12_DESCRIPTOR_RANGE_TYPE_SRV : D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+							   rangeDesc.descriptorsNum, rangeDesc.baseRegisterIndex);
+			}
+
+			CD3DX12_ROOT_PARAMETER rootParameter[3];
+			rootParameter[0].InitAsDescriptorTable(pipelineDesc.resourceRangesNum, ranges.data(), D3D12_SHADER_VISIBILITY_ALL);
+			rootParameter[1].InitAsDescriptorTable(1, &samplers, D3D12_SHADER_VISIBILITY_ALL);
+			rootParameter[2].InitAsConstantBufferView(desc.constantBufferRegisterIndex, desc.constantBufferSpaceIndex, D3D12_SHADER_VISIBILITY_ALL);
+			CD3DX12_ROOT_SIGNATURE_DESC sigDesc(3, rootParameter);
+
+			Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
+			Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+			HRESULT hr = D3D12SerializeRootSignature(&sigDesc, D3D_ROOT_SIGNATURE_VERSION_1, serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+			if(errorBlob != nullptr)
+				::OutputDebugStringA((char*) errorBlob->GetBufferPointer());
+			ThrowIfFailed(hr);
+
+			ThrowIfFailed(md3dDevice->CreateRootSignature(0, serializedRootSig->GetBufferPointer(), serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&mDenoiserRootSignatures[i])));
+
+			computeDesc.pRootSignature = mDenoiserRootSignatures[i].Get();
+			computeDesc.CS = {
+				pipelineDesc.computeShaderDXIL.bytecode,
+				pipelineDesc.computeShaderDXIL.size
+			};
+			ThrowIfFailed(md3dDevice->CreateComputePipelineState(&computeDesc, IID_PPV_ARGS(&mDenoiserPipelines[i])));
+		}
+	}
+
+	void Window::createDenoiserResources()
+	{
+		mDenoiserResources.clear();
+
+		nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
+	}
+
 	void Window::createDLSSResources()
 	{
 		auto hp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -494,23 +575,13 @@ namespace RT
 
 	void Window::DLSS(ID3D12Resource* outputResource, float jitterX, float jitterY, bool reset)
 	{
-		//float resolutionFactor = 1.1F - ((float) settings.dlssWidth / settings.width);
-
 		NVSDK_NGX_D3D12_DLSS_Eval_Params evalDesc = {};
 		evalDesc.Feature.pInColor = outputResource;
 		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
 		evalDesc.pInDepth = mDepthBuffer.Get();
 		evalDesc.pInMotionVectors = mMotionVectorBuffer.Get();
-		if(settings.dlss == DLSS_PERFORMANCE)
-		{
-			evalDesc.InJitterOffsetX = jitterX * 0.6F;
-			evalDesc.InJitterOffsetY = jitterY * 0.6F;
-		}
-		else
-		{
-			evalDesc.InJitterOffsetX = jitterX;
-			evalDesc.InJitterOffsetY = jitterY;
-		}
+		evalDesc.InJitterOffsetX = -jitterX;
+		evalDesc.InJitterOffsetY = -jitterY;
 		evalDesc.InRenderSubrectDimensions = { settings.dlssWidth, settings.dlssHeight };
 		evalDesc.InReset = reset ? 1 : 0;
 		evalDesc.InFrameTimeDeltaInMsec = mTimer.deltaTime();

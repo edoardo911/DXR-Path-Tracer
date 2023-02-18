@@ -18,11 +18,6 @@
 #include "raytracing/TopLevelASGenerator.h"
 #include "raytracing/DXRHelper.h"
 
-#include <NRD.h>
-
-#include <NRDSettings.h>
-#include <NRDDescs.h>
-
 using namespace RT;
 using namespace DirectX;
 
@@ -681,6 +676,9 @@ void App::update()
 	mCurrFrameResource = mFrameResources[mCurrFrameResourceIndex].get();
 
 	mFrameInExecution = mCurrFrameResource->fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->fence;
+
+	if(mMainPassCB.frameIndex > 256)
+		mMainPassCB.frameIndex = 1;
 	
 	if(!mFrameInExecution)
 	{
@@ -780,7 +778,6 @@ void App::updateMainPassCB()
 	if(mCam->isDirty())
 	{
 		mCam->cleanView();
-		mMainPassCB.frameIndex = 1;
 
 		XMMATRIX view = mCam->getView();
 
