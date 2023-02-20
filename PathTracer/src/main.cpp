@@ -82,7 +82,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mHeap;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputResource[3];
+	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputResource[2];
 
 	std::unordered_map<std::string, std::unique_ptr<InstanceData>> mGeometries;
 	std::vector<std::unique_ptr<RaytracingInstance>> mRTInstances;
@@ -356,11 +356,8 @@ void App::buildOutputResource()
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, settings.dlss ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS : D3D12_RESOURCE_STATE_COPY_SOURCE,
 				  nullptr, IID_PPV_ARGS(&mOutputResource[0])));
 
-	resDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mOutputResource[1])));
-
 	resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mOutputResource[2])));
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mOutputResource[1])));
 }
 
 App::AccelerationStructureBuffers App::createBottomLevelAS(const std::vector<std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, UINT32>>& vVertexBuffers,
@@ -417,14 +414,14 @@ void App::createRayGenSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddHeapRangesParameter({ { 0, 5, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5 } });
+	rsc.AddHeapRangesParameter({ { 0, 4, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4 } });
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
 void App::createMissSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 } });
+	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -443,7 +440,7 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0, 1);
-	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6 } });
+	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -451,8 +448,6 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 void App::createAOHitSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2 } });
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
@@ -597,7 +592,7 @@ void App::buildDescriptorHeap()
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
 	allocateOutputResources();
-	hDescriptor.Offset(5, mCbvSrvUavDescriptorSize);
+	hDescriptor.Offset(4, mCbvSrvUavDescriptorSize);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -650,8 +645,6 @@ void App::allocateOutputResources()
 	md3dDevice->CreateUnorderedAccessView(mOutputResource[0].Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mOutputResource[1].Get(), nullptr, &uavDesc, hDescriptor);
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateUnorderedAccessView(mOutputResource[2].Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	if(settings.dlss)
 	{

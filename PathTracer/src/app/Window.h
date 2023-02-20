@@ -112,6 +112,8 @@ namespace RT
 		std::vector<Microsoft::WRL::ComPtr<ID3D12RootSignature>> mDenoiserRootSignatures;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12PipelineState>> mDenoiserPipelines;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> mDenoiserResources;
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDenoiserCBVHeap;
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDenoiserSamplerHeap;
 
 		NVSDK_NGX_Handle* feature = nullptr;
 		NVSDK_NGX_Parameter* params = nullptr;

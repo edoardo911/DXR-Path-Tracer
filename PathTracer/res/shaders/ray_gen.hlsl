@@ -14,10 +14,9 @@ cbuffer cbPass: register(b0)
 }
 
 RWTexture2D<float4> gOutput: register(u0);
-RWTexture2D<float4> gSumBuffer: register(u1);
-RWTexture2D<float2> gLastPosition: register(u2);
-RWTexture2D<float> gDepthBuffer: register(u3);
-RWTexture2D<float2> gMotionVectorBuffer: register(u4);
+RWTexture2D<float2> gLastPosition: register(u1);
+RWTexture2D<float> gDepthBuffer: register(u2);
+RWTexture2D<float2> gMotionVectorBuffer: register(u3);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
