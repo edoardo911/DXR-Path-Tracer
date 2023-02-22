@@ -670,9 +670,6 @@ void App::update()
 
 	mFrameInExecution = mCurrFrameResource->fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->fence;
 
-	if(mMainPassCB.frameIndex > 256)
-		mMainPassCB.frameIndex = 1;
-	
 	if(!mFrameInExecution)
 	{
 		mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % NUM_FRAME_RESOURCES;
