@@ -133,7 +133,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>nvsdk_ngx_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>nvsdk_ngx_d.lib;NRD.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\lib\release;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

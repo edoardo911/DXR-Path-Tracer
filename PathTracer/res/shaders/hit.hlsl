@@ -109,6 +109,27 @@ float computeTextureLOD(uint2 size, float3 d, float t, out float2 anisotropicDir
 #endif
 }
 
+float3 _NRD_DecodeUnitVector(float2 p, const bool bSigned = false, const bool bNormalize = true)
+{
+    p = bSigned ? p : (p * 2.0 - 1.0);
+
+    // https://twitter.com/Stubbesaurus/status/937994790553227264
+    float3 n = float3(p.xy, 1.0 - abs(p.x) - abs(p.y));
+    float t = saturate(-n.z);
+    n.xy -= t * (step(0.0, n.xy) * 2.0 - 1.0);
+
+    return bNormalize ? normalize(n) : n;
+}
+
+float4 NRD_FrontEnd_UnpackNormalAndRoughness(float4 p)
+{
+    float4 r;
+    r.xyz = _NRD_DecodeUnitVector(p.xy, false, false);
+    r.w = p.z;
+    r.xyz = normalize(r.xyz);
+    return r;
+}
+
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, Attributes attrib)
 {
@@ -123,6 +144,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 				 vertices[indices[vertId + 2]].normal * barycentrics.z;
     float3 tangent = vertices[indices[vertId]].tangent * barycentrics.x + vertices[indices[vertId + 1]].tangent * barycentrics.y +
 				 vertices[indices[vertId + 2]].tangent * barycentrics.z;
+    float3 pos = vertices[indices[vertId]].pos * barycentrics.x + vertices[indices[vertId + 1]].pos * barycentrics.y +
+			     vertices[indices[vertId + 2]].pos * barycentrics.z;
     norm = normalize(mul(norm, (float3x3) gWorld));
     tangent = normalize(mul(tangent, (float3x3) gWorld));
     
@@ -392,7 +415,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
             distanceFactor = 1.0F - clamp(reflPayload.colorAndDistance.a / (50 * shininess), 0.0F, 1.0F);
         else
             distanceFactor = min(shininess * 3, 1.0F);
-        hitColor.rgb = lerp(hitColor.rgb, reflPayload.colorAndDistance.rgb, fresnelFactor * material.metallic * distanceFactor);    
+        hitColor.rgb = lerp(hitColor.rgb, reflPayload.colorAndDistance.rgb, fresnelFactor * material.metallic * distanceFactor);
+        hitColor.a = reflPayload.colorAndDistance.a;
     }
     
     //refraction
@@ -426,7 +450,10 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         else
             distanceFactor = visibility;
         hitColor.rgb = lerp(hitColor.rgb, refrPayload.colorAndDistance.rgb, visibility * fresnelFactor * distanceFactor);
+        hitColor.a = refrPayload.colorAndDistance.a;
     }
     
     payload.colorAndDistance = hitColor;
+    payload.normalAndRough = NRD_FrontEnd_UnpackNormalAndRoughness(float4((normalize(norm)), material.roughness));
+    payload.z = pos.z;
 }

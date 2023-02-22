@@ -15,8 +15,10 @@ cbuffer cbPass: register(b0)
 
 RWTexture2D<float4> gOutput: register(u0);
 RWTexture2D<float2> gLastPosition: register(u1);
-RWTexture2D<float> gDepthBuffer: register(u2);
-RWTexture2D<float2> gMotionVectorBuffer: register(u3);
+RWTexture2D<float4> gNormalAndRoughness: register(u2);
+RWTexture2D<float> gDepthBuffer: register(u3);
+RWTexture2D<float2> gMotionVectorBuffer: register(u4);
+RWTexture2D<float> gZDepth: register(u5);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
@@ -37,11 +39,13 @@ void RayGen()
     
     HitInfo payload;
     payload.colorAndDistance = float4(0, 0, 0, 0);
+    payload.normalAndRough = float4(0, 0, 0, 0);
+    payload.z = gFarPlane;
     payload.recursionDepth = 1;
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
     
-    gOutput[launchIndex] = payload.colorAndDistance;
+    gOutput[launchIndex] = payload.normalAndRough;
     
     //non jittered informations
     target = mul(gInvProj, float4(d.x, -d.y, 1, 1));
@@ -59,4 +63,6 @@ void RayGen()
     float2 lastPos = gLastPosition[launchIndex];
     gMotionVectorBuffer[launchIndex] = lastPos - pp.hPosAndT.xy;
     gLastPosition[launchIndex] = pp.hPosAndT.xy;
+    gNormalAndRoughness[launchIndex] = payload.normalAndRough;
+    gZDepth[launchIndex] = payload.z;
 }

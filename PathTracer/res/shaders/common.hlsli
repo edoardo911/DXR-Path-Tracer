@@ -7,6 +7,8 @@
 struct HitInfo
 {
     float4 colorAndDistance;
+    float4 normalAndRough;
+    float z;
     uint recursionDepth;
 };
 
