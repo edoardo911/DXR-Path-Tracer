@@ -16,6 +16,7 @@ SamplerState gsamTrilinearWrap: register(s2);
 
 cbuffer cbPass: register(b0)
 {
+    float4x4 gView;
     float4x4 gInvView;
     float4x4 gInvProj;
     float gFov;
@@ -109,25 +110,28 @@ float computeTextureLOD(uint2 size, float3 d, float t, out float2 anisotropicDir
 #endif
 }
 
-float3 _NRD_DecodeUnitVector(float2 p, const bool bSigned = false, const bool bNormalize = true)
+float NRD_PackViewZ(float z)
 {
-    p = bSigned ? p : (p * 2.0 - 1.0);
-
-    // https://twitter.com/Stubbesaurus/status/937994790553227264
-    float3 n = float3(p.xy, 1.0 - abs(p.x) - abs(p.y));
-    float t = saturate(-n.z);
-    n.xy -= t * (step(0.0, n.xy) * 2.0 - 1.0);
-
-    return bNormalize ? normalize(n) : n;
+    return clamp(z * 0.125, -65504.0, 65504.0);
 }
 
-float4 NRD_FrontEnd_UnpackNormalAndRoughness(float4 p)
+float2 _NRD_EncodeUnitVector(float3 v, const bool bSigned = false)
 {
-    float4 r;
-    r.xyz = _NRD_DecodeUnitVector(p.xy, false, false);
-    r.w = p.z;
-    r.xyz = normalize(r.xyz);
-    return r;
+    v /= dot(abs(v), 1.0);
+
+    float2 octWrap = (1.0 - abs(v.yx)) * (step(0.0, v.xy) * 2.0 - 1.0);
+    v.xy = v.z >= 0.0 ? v.xy : octWrap;
+
+    return bSigned ? v.xy : v.xy * 0.5 + 0.5;
+}
+
+float4 NRD_FrontEnd_PackNormalAndRoughness(float3 N, float roughness)
+{
+    float4 p;
+    p.xy = _NRD_EncodeUnitVector(N, false);
+    p.z = roughness;
+    p.w = 0.0;
+    return p;
 }
 
 [shader("closesthit")]
@@ -148,6 +152,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 			     vertices[indices[vertId + 2]].pos * barycentrics.z;
     norm = normalize(mul(norm, (float3x3) gWorld));
     tangent = normalize(mul(tangent, (float3x3) gWorld));
+    pos = mul(float4(pos, 1.0), gView);
     
     uint seed = initRand(DispatchRaysIndex().x * gFrameIndex, DispatchRaysIndex().y * gFrameIndex, 16);
     
@@ -454,6 +459,6 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     }
     
     payload.colorAndDistance = hitColor;
-    payload.normalAndRough = NRD_FrontEnd_UnpackNormalAndRoughness(float4((normalize(norm)), material.roughness));
+    payload.normalAndRough = NRD_FrontEnd_PackNormalAndRoughness(norm, material.roughness);
     payload.z = pos.z;
 }

@@ -475,7 +475,7 @@ namespace RT
 		resDesc.Width = settings.width;
 		resDesc.Height = settings.height;
 		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		resDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture[0])));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture[1])));
 
@@ -498,6 +498,10 @@ namespace RT
 
 		//allocate
 		D3D12_SAMPLER_DESC samplerDesc = {};
+		samplerDesc.MinLOD = 0;
+		samplerDesc.MaxAnisotropy = 16;
+		samplerDesc.MaxLOD = 15;
+		samplerDesc.MipLODBias = 0;
 		CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDenoiserSamplerHeap->GetCPUDescriptorHandleForHeapStart());
 		for(UINT32 i = 0; i < desc.samplersNum; ++i)
 		{
@@ -782,16 +786,16 @@ namespace RT
 		{
 			for(int j = 0; j < 4; ++j)
 			{
-				settings.viewToClipMatrix[i * 4 + j] = proj(j, i);
-				settings.viewToClipMatrixPrev[i * 4 + j] = proj(j, i);
+				settings.viewToClipMatrix[i * 4 + j] = proj(i, j);
+				settings.viewToClipMatrixPrev[i * 4 + j] = proj(i, j);
 			}
 		}
 		for(int i = 0; i < 4; ++i)
 		{
 			for(int j = 0; j < 4; ++j)
 			{
-				settings.worldToViewMatrix[i * 4 + j] = view(j, i);
-				settings.worldToViewMatrixPrev[i * 4 + j] = view(j, i);
+				settings.worldToViewMatrix[i * 4 + j] = view(i, j);
+				settings.worldToViewMatrixPrev[i * 4 + j] = view(i, j);
 			}
 		}
 
@@ -803,6 +807,7 @@ namespace RT
 		settings.frameIndex = frameIndex;
 		settings.disocclusionThreshold = 0.5F;
 		settings.enableValidation = true;
+		settings.denoisingRange = 9000;
 
 		const nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
 		const nrd::DispatchDesc* dd;
@@ -847,17 +852,17 @@ namespace RT
 				else if(res.type == nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST)
 				{
 					tex = mDenoisedTexture[0].Get();
-					format = DXGI_FORMAT_R8G8B8A8_UNORM;
+					format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 				}
 				else if(res.type == nrd::ResourceType::OUT_VALIDATION)
 				{
 					tex = mDenoisedTexture[1].Get();
-					format = DXGI_FORMAT_R8G8B8A8_UNORM;
+					format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 				}
 				else if(res.type == nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST)
 				{
 					tex = outputResource;
-					format = DXGI_FORMAT_R8G8B8A8_UNORM;
+					format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 				}
 				else if(res.type == nrd::ResourceType::IN_NORMAL_ROUGHNESS)
 				{

@@ -175,6 +175,7 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 3> App::getStaticSamplers()
 
 bool App::initialize()
 {
+	settings.backBufferFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	if(!Window::initialize())
 		return false;
 
@@ -777,7 +778,8 @@ void App::updateMainPassCB()
 
 		XMMATRIX view = mCam->getView();
 
-		XMFLOAT4X4 PROJ = mCam->getProj4x4();
+		XMStoreFloat4x4(&mMainPassCB.view, XMMatrixTranspose(view));
+
 		XMMATRIX proj = mCam->getProj();
 
 		XMVECTOR viewDet = XMMatrixDeterminant(view);
