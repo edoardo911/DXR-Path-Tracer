@@ -65,7 +65,7 @@ void RayGen()
     ray.TMax = gFarPlane;
     
     HitInfo payload;
-    payload.colorAndDistance = float4(0, 0, 0, gFarPlane - gNearPlane);
+    payload.colorAndDistance = float4(0, 0, 0, 0);
     payload.normalAndRough = float4(0, 0, 0, 0);
     payload.z = gFarPlane - gNearPlane;
     payload.recursionDepth = 1;
@@ -89,6 +89,6 @@ void RayGen()
     gMotionVectorBuffer[launchIndex] = lastPos - pp.hPosAndT.xy;
     gLastPosition[launchIndex] = pp.hPosAndT.xy;
     gNormalAndRoughness[launchIndex] = payload.normalAndRough;
-    gZDepth[launchIndex] = payload.z;
-    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, payload.colorAndDistance.a);
+    gZDepth[launchIndex] = 100;
+    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, 0);
 }

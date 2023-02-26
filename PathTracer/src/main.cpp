@@ -175,7 +175,7 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 3> App::getStaticSamplers()
 
 bool App::initialize()
 {
-	settings.backBufferFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	//settings.backBufferFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	if(!Window::initialize())
 		return false;
 
@@ -532,7 +532,7 @@ void App::createShaderBindingTable()
 		mSBTHelper.AddMissProgram(L"AOMiss", {});
 		mSBTHelper.AddMissProgram(L"PosMiss", {});
 
-		for(auto& i : mRTInstances)
+		for(auto& i:mRTInstances)
 		{
 			auto objCB = mFrameResources[j]->objCB->resource();
 			D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCB->GetGPUVirtualAddress() + i->objCBOffset * objCBSize;
@@ -672,7 +672,7 @@ void App::update()
 	mFrameInExecution = mCurrFrameResource->fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->fence;
 
 	if(mMainPassCB.frameIndex > 63)
-		mMainPassCB.frameIndex = 0;
+		mMainPassCB.frameIndex = 1;
 	
 	if(!mFrameInExecution)
 	{

@@ -475,7 +475,7 @@ namespace RT
 		resDesc.Width = settings.width;
 		resDesc.Height = settings.height;
 		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		resDesc.Format = settings.backBufferFormat;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture[0])));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture[1])));
 
@@ -500,7 +500,7 @@ namespace RT
 		D3D12_SAMPLER_DESC samplerDesc = {};
 		samplerDesc.MinLOD = 0;
 		samplerDesc.MaxAnisotropy = 16;
-		samplerDesc.MaxLOD = 15;
+		samplerDesc.MaxLOD = 16;
 		samplerDesc.MipLODBias = 0;
 		CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDenoiserSamplerHeap->GetCPUDescriptorHandleForHeapStart());
 		for(UINT32 i = 0; i < desc.samplersNum; ++i)
@@ -524,14 +524,14 @@ namespace RT
 				samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 				samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 				samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-				samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+				samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 			}
 			else if(desc.samplers[i] == nrd::Sampler::LINEAR_MIRRORED_REPEAT)
 			{
 				samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 				samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
 				samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-				samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+				samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 			}
 
 			md3dDevice->CreateSampler(&samplerDesc, hDescriptor);
@@ -788,12 +788,6 @@ namespace RT
 			{
 				settings.viewToClipMatrix[i * 4 + j] = proj(i, j);
 				settings.viewToClipMatrixPrev[i * 4 + j] = proj(i, j);
-			}
-		}
-		for(int i = 0; i < 4; ++i)
-		{
-			for(int j = 0; j < 4; ++j)
-			{
 				settings.worldToViewMatrix[i * 4 + j] = view(i, j);
 				settings.worldToViewMatrixPrev[i * 4 + j] = view(i, j);
 			}
@@ -817,11 +811,13 @@ namespace RT
 		BYTE* cbvData;
 		mDenoiserCBV->Map(0, nullptr, reinterpret_cast<void**>(&cbvData));
 
+		int constantBufferViewSize = CalcConstantBufferByteSize(desc.constantBufferMaxDataSize);
+
 		for(UINT32 i = 0; i < num; ++i)
 		{
 			const nrd::DispatchDesc d = dd[i];
 
-			memcpy(cbvData, d.constantBufferData, d.constantBufferDataSize);
+			memcpy(&cbvData[i * constantBufferViewSize], d.constantBufferData, d.constantBufferDataSize);
 			CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDenoiserResourcesHeap->GetCPUDescriptorHandleForHeapStart());
 			for(UINT32 j = 0; j < d.resourcesNum; ++j)
 			{
@@ -852,17 +848,17 @@ namespace RT
 				else if(res.type == nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST)
 				{
 					tex = mDenoisedTexture[0].Get();
-					format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+					format = this->settings.backBufferFormat;
 				}
 				else if(res.type == nrd::ResourceType::OUT_VALIDATION)
 				{
 					tex = mDenoisedTexture[1].Get();
-					format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+					format = this->settings.backBufferFormat;
 				}
 				else if(res.type == nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST)
 				{
 					tex = outputResource;
-					format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+					format = this->settings.backBufferFormat;
 				}
 				else if(res.type == nrd::ResourceType::IN_NORMAL_ROUGHNESS)
 				{
@@ -901,7 +897,7 @@ namespace RT
 			mCommandList->SetPipelineState(mDenoiserPipelines[d.pipelineIndex].Get());
 			mCommandList->SetComputeRootDescriptorTable(0, mDenoiserResourcesHeap->GetGPUDescriptorHandleForHeapStart());
 			mCommandList->SetComputeRootDescriptorTable(1, mDenoiserSamplerHeap->GetGPUDescriptorHandleForHeapStart());
-			mCommandList->SetComputeRootConstantBufferView(2, mDenoiserCBV->GetGPUVirtualAddress());
+			mCommandList->SetComputeRootConstantBufferView(2, mDenoiserCBV->GetGPUVirtualAddress() + i * constantBufferViewSize);
 
 			mCommandList->Dispatch(d.gridWidth, d.gridHeight, 1);
 		}
