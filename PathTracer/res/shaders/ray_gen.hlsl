@@ -23,6 +23,7 @@ RWTexture2D<float> gZDepth: register(u5);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
+//TODO import NRD.hlsli and define encodings
 float3 _NRD_LinearToYCoCg(float3 color)
 {
     float Y = dot(color, float3(0.25, 0.5, 0.25));
@@ -89,6 +90,6 @@ void RayGen()
     gMotionVectorBuffer[launchIndex] = lastPos - pp.hPosAndT.xy;
     gLastPosition[launchIndex] = pp.hPosAndT.xy;
     gNormalAndRoughness[launchIndex] = payload.normalAndRough;
-    gZDepth[launchIndex] = 100;
-    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, 0);
+    gZDepth[launchIndex] = 1e-7;
+    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, payload.colorAndDistance.a / (gFarPlane - gNearPlane));
 }

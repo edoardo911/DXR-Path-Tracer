@@ -781,6 +781,7 @@ namespace RT
 
 	void Window::denoise(DirectX::XMFLOAT4X4 proj, DirectX::XMFLOAT4X4 view, float jitterX, float jitterY, int frameIndex, ID3D12Resource* outputResource)
 	{
+		//TODO pass settings as parameter
 		nrd::CommonSettings settings;
 		for(int i = 0; i < 4; ++i)
 		{
@@ -802,6 +803,9 @@ namespace RT
 		settings.disocclusionThreshold = 0.5F;
 		settings.enableValidation = true;
 		settings.denoisingRange = 9000;
+		//TODO dlss sizes
+		settings.motionVectorScale[0] = 1.0F / this->settings.width;
+		settings.motionVectorScale[1] = 1.0F / this->settings.height;
 
 		const nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
 		const nrd::DispatchDesc* dd;
@@ -822,7 +826,7 @@ namespace RT
 			for(UINT32 j = 0; j < d.resourcesNum; ++j)
 			{
 				DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-				ID3D12Resource* tex = mDenoiserResources[1].Get();
+				ID3D12Resource* tex = mDenoiserResources[0].Get();
 				
 				const nrd::ResourceDesc res = d.resources[j];
 				if(res.type == nrd::ResourceType::PERMANENT_POOL)

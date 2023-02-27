@@ -175,7 +175,6 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 3> App::getStaticSamplers()
 
 bool App::initialize()
 {
-	//settings.backBufferFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	if(!Window::initialize())
 		return false;
 
