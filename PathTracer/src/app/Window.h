@@ -7,13 +7,6 @@
 #include "../input/Keyboard.h"
 #include "../input/Mouse.h"
 
-#include <nvsdk_ngx_helpers.h>
-
-#include <NRD.h>
-
-#include <NRDSettings.h>
-#include <NRDDescs.h>
-
 namespace RT
 {
 	class DLSSException: public std::exception
@@ -80,7 +73,7 @@ namespace RT
 		void createDenoiserPipelines();
 		void createDenoiserResources();
 		void DLSS(ID3D12Resource* outputResource, float jitterX = 0.0F, float jitterY = 0.0F, bool reset = false);
-		void denoise(DirectX::XMFLOAT4X4 proj, DirectX::XMFLOAT4X4 view, float jitterX, float jitterY, int frameIndex, ID3D12Resource* outputResource);
+		void denoise(nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource);
 
 		void createCommandObjects();
 		void createSwapChain();
@@ -113,12 +106,13 @@ namespace RT
 		std::vector<Microsoft::WRL::ComPtr<ID3D12RootSignature>> mDenoiserRootSignatures;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12PipelineState>> mDenoiserPipelines;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> mDenoiserResources;
-		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDenoiserResourcesHeap;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>> mDenoiserResourcesHeaps;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDenoiserSamplerHeap;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoiserCBV;
 
-		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedTexture[2];
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedTexture;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mNormalRoughness;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mAlbedoMap;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mZDepth;
 
 		NVSDK_NGX_Handle* feature = nullptr;

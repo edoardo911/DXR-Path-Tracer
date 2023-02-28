@@ -11,11 +11,11 @@ void PosClosestHit(inout PosPayload payload, Attributes attrib)
     float3 pos = vertices[indices[vertId]].pos * barycentrics.x + vertices[indices[vertId + 1]].pos * barycentrics.y +
 				 vertices[indices[vertId + 2]].pos * barycentrics.z;
     
-    payload.hPosAndT = float3(pos.xy, RayTCurrent());
+    payload.hPosAndT = float4(pos, RayTCurrent());
 }
 
 [shader("miss")]
 void PosMiss(inout PosPayload payload: SV_RayPayload)
 {
-    payload.hPosAndT.xy = normalize(RayTCurrent()) * 9999.9F;
+    payload.hPosAndT.w = RayTCurrent();
 }

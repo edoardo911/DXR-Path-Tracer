@@ -17,6 +17,7 @@ SamplerState gsamTrilinearWrap: register(s2);
 cbuffer cbPass: register(b0)
 {
     float4x4 gView;
+    float4x4 gViewProj;
     float4x4 gInvView;
     float4x4 gInvProj;
     float gFov;
@@ -110,11 +111,6 @@ float computeTextureLOD(uint2 size, float3 d, float t, out float2 anisotropicDir
 #endif
 }
 
-float NRD_PackViewZ(float z)
-{
-    return clamp(z * 0.125, -65504.0, 65504.0);
-}
-
 float2 _NRD_EncodeUnitVector(float3 v, const bool bSigned = false)
 {
     v /= dot(abs(v), 1.0);
@@ -130,7 +126,7 @@ float4 NRD_FrontEnd_PackNormalAndRoughness(float3 N, float roughness)
     float4 p;
     p.xy = _NRD_EncodeUnitVector(N, false);
     p.z = roughness;
-    p.w = 0.0;
+    p.w = 0;
     return p;
 }
 
@@ -283,7 +279,10 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	
     TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
     if(reflPayload.colorAndDistance.a > 0.0F)
+    {
         indirectLight = reflPayload.colorAndDistance.rgb;
+        payload.colorAndDistance.a = reflPayload.colorAndDistance.a;
+    }
     
     //ambient light
     float4 ambient = gAmbientLight * diffuseAlbedo;
@@ -293,18 +292,18 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     RayDesc aoRay;
     aoRay.Origin = worldOrigin;
     aoRay.Direction = calcRTAODirection(seed);
-    aoRay.TMin = 0.001F;
-    aoRay.TMax = 0.071F;
+    aoRay.TMin = 0.001;
+    aoRay.TMax = 0.071;
 
     AOHitInfo aoPayload;
     aoPayload.isHit = false;
 
     TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 2, 0, 2, aoRay, aoPayload);
-    if (aoPayload.isHit)
-        hitColor.rgb *= 0.1F;
+    if(aoPayload.isHit)
+        hitColor.rgb *= 0.1;
     
     //shadows
-    float3 shadowFactor = float3(1.0F, 1.0F, 1.0F);
+    float3 shadowFactor = float3(1.0, 1.0, 1.0);
     
     int i;
 #if (NUM_DIR_LIGHTS > 0)
@@ -421,7 +420,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         else
             distanceFactor = min(shininess * 3, 1.0F);
         hitColor.rgb = lerp(hitColor.rgb, reflPayload.colorAndDistance.rgb, fresnelFactor * material.metallic * distanceFactor);
-        hitColor.a = reflPayload.colorAndDistance.a;
+        //hitColor.a = reflPayload.colorAndDistance.a;
     }
     
     //refraction
@@ -455,10 +454,10 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         else
             distanceFactor = visibility;
         hitColor.rgb = lerp(hitColor.rgb, refrPayload.colorAndDistance.rgb, visibility * fresnelFactor * distanceFactor);
-        hitColor.a = refrPayload.colorAndDistance.a;
+        //hitColor.a = refrPayload.colorAndDistance.a;
     }
     
     payload.colorAndDistance = hitColor;
     payload.normalAndRough = NRD_FrontEnd_PackNormalAndRoughness(norm, material.roughness);
-    payload.z = pos.z;
+    payload.albedoAndZ = float4(diffuseAlbedo.rgb, pos.z);
 }

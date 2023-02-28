@@ -22,6 +22,16 @@
 #include <dxgi1_4.h>
 #pragma comment(lib, "dxgi.lib")
 
+//DLSS
+#include <nvsdk_ngx_helpers.h>
+
+//denoiser
+#include <NRD.h>
+
+#include <NRDSettings.h>
+#include <NRDDescs.h>
+
+
 //standard libraries
 #include <unordered_map>
 #include <stdexcept>

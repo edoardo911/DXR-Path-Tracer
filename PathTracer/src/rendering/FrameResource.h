@@ -37,6 +37,7 @@ namespace RT
 	struct MainPass
 	{
 		DirectX::XMFLOAT4X4 view;
+		DirectX::XMFLOAT4X4 viewProj;
 		DirectX::XMFLOAT4X4 invView;
 		DirectX::XMFLOAT4X4 invProj;
 		float fov;

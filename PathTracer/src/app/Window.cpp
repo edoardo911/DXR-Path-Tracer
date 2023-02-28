@@ -438,10 +438,12 @@ namespace RT
 	void Window::createDenoiserResources()
 	{
 		mDenoiserResources.clear();
+		mDenoiserResourcesHeaps.clear();
 
 		const nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
 		UINT32 poolSize = desc.permanentPoolSize + desc.transientPoolSize;
 		mDenoiserResources.resize(poolSize);
+		mDenoiserResourcesHeaps.resize(desc.descriptorPoolDesc.setsMaxNum);
 
 		//create constant buffer
 		int constantBufferViewSize = CalcConstantBufferByteSize(desc.constantBufferMaxDataSize);
@@ -472,12 +474,13 @@ namespace RT
 			ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&mDenoiserResources[i])));
 		}
 
+		//TODO DLSS sizes
 		resDesc.Width = settings.width;
 		resDesc.Height = settings.height;
 		resDesc.MipLevels = 1;
 		resDesc.Format = settings.backBufferFormat;
-		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture[0])));
-		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture[1])));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mAlbedoMap)));
 
 		resDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mNormalRoughness)));
@@ -494,7 +497,8 @@ namespace RT
 
 		heapDesc.NumDescriptors = 15;
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mDenoiserResourcesHeap)));
+		for(UINT32 i = 0; i < desc.descriptorPoolDesc.setsMaxNum; ++i)
+			ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mDenoiserResourcesHeaps[i])));
 
 		//allocate
 		D3D12_SAMPLER_DESC samplerDesc = {};
@@ -547,7 +551,7 @@ namespace RT
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.DepthOrArraySize = 1;
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+		resDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 		resDesc.Width = settings.dlss ? settings.dlssWidth : settings.width;
 		resDesc.Height = settings.dlss ? settings.dlssHeight : settings.height;
@@ -779,38 +783,12 @@ namespace RT
 		NGX_D3D12_EVALUATE_DLSS_EXT(mCommandList.Get(), feature, params, &evalDesc);
 	}
 
-	void Window::denoise(DirectX::XMFLOAT4X4 proj, DirectX::XMFLOAT4X4 view, float jitterX, float jitterY, int frameIndex, ID3D12Resource* outputResource)
+	void Window::denoise(nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource)
 	{
-		//TODO pass settings as parameter
-		nrd::CommonSettings settings;
-		for(int i = 0; i < 4; ++i)
-		{
-			for(int j = 0; j < 4; ++j)
-			{
-				settings.viewToClipMatrix[i * 4 + j] = proj(i, j);
-				settings.viewToClipMatrixPrev[i * 4 + j] = proj(i, j);
-				settings.worldToViewMatrix[i * 4 + j] = view(i, j);
-				settings.worldToViewMatrixPrev[i * 4 + j] = view(i, j);
-			}
-		}
-
-		settings.cameraJitter[0] = jitterX;
-		settings.cameraJitter[1] = jitterY;
-		settings.inputSubrectOrigin[0] = 0;
-		settings.inputSubrectOrigin[1] = 0;
-		settings.timeDeltaBetweenFrames = mTimer.deltaTime();
-		settings.frameIndex = frameIndex;
-		settings.disocclusionThreshold = 0.5F;
-		settings.enableValidation = true;
-		settings.denoisingRange = 9000;
-		//TODO dlss sizes
-		settings.motionVectorScale[0] = 1.0F / this->settings.width;
-		settings.motionVectorScale[1] = 1.0F / this->settings.height;
-
 		const nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
 		const nrd::DispatchDesc* dd;
 		uint32_t num;
-		nrd::GetComputeDispatches(*mDenoiser, settings, dd, num);
+		nrd::GetComputeDispatches(*mDenoiser, nrdSettings, dd, num);
 
 		BYTE* cbvData;
 		mDenoiserCBV->Map(0, nullptr, reinterpret_cast<void**>(&cbvData));
@@ -822,7 +800,7 @@ namespace RT
 			const nrd::DispatchDesc d = dd[i];
 
 			memcpy(&cbvData[i * constantBufferViewSize], d.constantBufferData, d.constantBufferDataSize);
-			CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDenoiserResourcesHeap->GetCPUDescriptorHandleForHeapStart());
+			CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDenoiserResourcesHeaps[i]->GetCPUDescriptorHandleForHeapStart());
 			for(UINT32 j = 0; j < d.resourcesNum; ++j)
 			{
 				DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
@@ -842,7 +820,7 @@ namespace RT
 				else if(res.type == nrd::ResourceType::IN_MV)
 				{
 					tex = mMotionVectorBuffer.Get();
-					format = DXGI_FORMAT_R32G32_FLOAT;
+					format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 				}
 				else if(res.type == nrd::ResourceType::IN_VIEWZ)
 				{
@@ -851,12 +829,12 @@ namespace RT
 				}
 				else if(res.type == nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST)
 				{
-					tex = mDenoisedTexture[0].Get();
+					tex = mDenoisedTexture.Get();
 					format = this->settings.backBufferFormat;
 				}
 				else if(res.type == nrd::ResourceType::OUT_VALIDATION)
 				{
-					tex = mDenoisedTexture[1].Get();
+					tex = mDenoisedTexture.Get();
 					format = this->settings.backBufferFormat;
 				}
 				else if(res.type == nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST)
@@ -894,12 +872,12 @@ namespace RT
 				hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 			}
 
-			ID3D12DescriptorHeap* heaps0[] = { mDenoiserResourcesHeap.Get(), mDenoiserSamplerHeap.Get() };
-			mCommandList->SetDescriptorHeaps(2, heaps0);
+			ID3D12DescriptorHeap* heaps[] = { mDenoiserResourcesHeaps[i].Get(), mDenoiserSamplerHeap.Get()};
+			mCommandList->SetDescriptorHeaps(2, heaps);
 			mCommandList->SetComputeRootSignature(mDenoiserRootSignatures[d.pipelineIndex].Get());
 
 			mCommandList->SetPipelineState(mDenoiserPipelines[d.pipelineIndex].Get());
-			mCommandList->SetComputeRootDescriptorTable(0, mDenoiserResourcesHeap->GetGPUDescriptorHandleForHeapStart());
+			mCommandList->SetComputeRootDescriptorTable(0, mDenoiserResourcesHeaps[i]->GetGPUDescriptorHandleForHeapStart());
 			mCommandList->SetComputeRootDescriptorTable(1, mDenoiserSamplerHeap->GetGPUDescriptorHandleForHeapStart());
 			mCommandList->SetComputeRootConstantBufferView(2, mDenoiserCBV->GetGPUVirtualAddress() + i * constantBufferViewSize);
 

@@ -8,7 +8,7 @@ struct HitInfo
 {
     float4 colorAndDistance;
     float4 normalAndRough;
-    float z;
+    float4 albedoAndZ;
     uint recursionDepth;
 };
 
@@ -25,7 +25,7 @@ struct AOHitInfo
 
 struct PosPayload
 {
-    float3 hPosAndT;
+    float4 hPosAndT;
 };
 
 //other structs

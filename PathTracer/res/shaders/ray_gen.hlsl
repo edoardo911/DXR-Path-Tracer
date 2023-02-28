@@ -3,6 +3,7 @@
 cbuffer cbPass: register(b0)
 {
     float4x4 gView;
+    float4x4 gViewProj;
     float4x4 gInvView;
     float4x4 gInvProj;
     float gFov;
@@ -20,6 +21,7 @@ RWTexture2D<float4> gNormalAndRoughness: register(u2);
 RWTexture2D<float> gDepthBuffer: register(u3);
 RWTexture2D<float2> gMotionVectorBuffer: register(u4);
 RWTexture2D<float> gZDepth: register(u5);
+RWTexture2D<float4> gAlbedoMap: register(u6);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
@@ -68,7 +70,7 @@ void RayGen()
     HitInfo payload;
     payload.colorAndDistance = float4(0, 0, 0, 0);
     payload.normalAndRough = float4(0, 0, 0, 0);
-    payload.z = gFarPlane - gNearPlane;
+    payload.albedoAndZ = float4(0, 0, 0, gFarPlane - gNearPlane);
     payload.recursionDepth = 1;
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
@@ -78,18 +80,16 @@ void RayGen()
     ray.Direction = mul(gInvView, float4(target.xyz, 0));
     
     PosPayload pp;
-    pp.hPosAndT = float3(0.0F, 0.0F, -1.0F);
+    pp.hPosAndT = float4(0.0, 0.0, 0.0, -1.0);
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 3, 0, 3, ray, pp);
-    
-    if(pp.hPosAndT.z < 0.0F)
-        gDepthBuffer[launchIndex] = 1.0F;
-    else
-        gDepthBuffer[launchIndex] = min(pp.hPosAndT.z / (gFarPlane - gNearPlane), 1.0F);
+        
+    gDepthBuffer[launchIndex] = min(pp.hPosAndT.w / (gFarPlane - gNearPlane), 1.0F);
     
     float2 lastPos = gLastPosition[launchIndex];
-    gMotionVectorBuffer[launchIndex] = lastPos - pp.hPosAndT.xy;
+    gMotionVectorBuffer[launchIndex] = pp.hPosAndT.w < 0.0 ? 0.0 : lastPos - pp.hPosAndT.xy;
     gLastPosition[launchIndex] = pp.hPosAndT.xy;
     gNormalAndRoughness[launchIndex] = payload.normalAndRough;
-    gZDepth[launchIndex] = 1e-7;
-    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, payload.colorAndDistance.a / (gFarPlane - gNearPlane));
+    gZDepth[launchIndex] = payload.albedoAndZ.w;
+    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb / payload.albedoAndZ.rgb, payload.colorAndDistance.a);
+    gAlbedoMap[launchIndex].rgb = payload.albedoAndZ.rgb;
 }
