@@ -109,6 +109,7 @@ namespace RT
 		std::vector<Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>> mDenoiserResourcesHeaps;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDenoiserSamplerHeap;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoiserCBV;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedComposite;
 
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedTexture;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mNormalRoughness;

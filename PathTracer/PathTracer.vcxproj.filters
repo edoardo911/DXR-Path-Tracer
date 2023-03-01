@@ -66,6 +66,9 @@
     <ClCompile Include="src\logging\Logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\rendering\PostDenoise.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\utils\UploadBuffer.h">
@@ -137,5 +140,11 @@
     <ClInclude Include="src\logging\Logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\rendering\PostDenoise.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="res\shaders\post_denoise.hlsl" />
   </ItemGroup>
 </Project>

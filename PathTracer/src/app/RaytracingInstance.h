@@ -38,6 +38,7 @@ namespace RT
 		RaytracingInstance& operator=(const RaytracingInstance& rhs) = delete;
 
 		DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
+		DirectX::XMMATRIX worldPrev = DirectX::XMMatrixIdentity();
 		DirectX::XMMATRIX texTransform = DirectX::XMMatrixIdentity();
 		int numFramesDirty = NUM_FRAME_RESOURCES;
 

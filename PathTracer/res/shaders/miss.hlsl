@@ -8,5 +8,5 @@ SamplerState gsamBilinearWrap: register(s1);
 void Miss(inout HitInfo payload: SV_RayPayload)
 {
     float4 color = gCubemap.SampleLevel(gsamBilinearWrap, WorldRayDirection(), 0);
-    payload.colorAndDistance.rgb = 1;
+    payload.colorAndDistance.rgb = color.rgb;
 }

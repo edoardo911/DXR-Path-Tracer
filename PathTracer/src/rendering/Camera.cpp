@@ -151,4 +151,10 @@ namespace RT
 			mView(3, 3) = 1.0F;
 		}
 	}
+
+	void Camera::saveState()
+	{
+		memcpy(mProjPrev.m, mProj.m, sizeof(float) * 16);
+		memcpy(mViewPrev.m, mView.m, sizeof(float) * 16);
+	}
 }

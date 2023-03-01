@@ -49,10 +49,6 @@
 #include <array>
 #include <ppl.h>
 
-#include "settings.h"
-#include "d3dutil.h"
-#include "keys.h"
-
 //macros
 #ifndef ThrowIfFailed
 	#define ThrowIfFailed(x)													\
@@ -62,3 +58,8 @@
 		if(FAILED(hr__)) { throw RT::DxException(hr__, L#x, wfn, __LINE__); }	\
 	}
 #endif
+
+//engine libraries
+#include "settings.h"
+#include "d3dutil.h"
+#include "keys.h"

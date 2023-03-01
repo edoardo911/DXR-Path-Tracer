@@ -21,6 +21,7 @@ struct ShadowHitInfo
 struct AOHitInfo
 {
     bool isHit;
+    float hitT;
 };
 
 struct PosPayload

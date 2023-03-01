@@ -481,6 +481,7 @@ namespace RT
 		resDesc.Format = settings.backBufferFormat;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture)));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mAlbedoMap)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedComposite)));
 
 		resDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mNormalRoughness)));
@@ -551,7 +552,7 @@ namespace RT
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.DepthOrArraySize = 1;
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		resDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
 		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 		resDesc.Width = settings.dlss ? settings.dlssWidth : settings.width;
 		resDesc.Height = settings.dlss ? settings.dlssHeight : settings.height;
@@ -820,7 +821,7 @@ namespace RT
 				else if(res.type == nrd::ResourceType::IN_MV)
 				{
 					tex = mMotionVectorBuffer.Get();
-					format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+					format = DXGI_FORMAT_R32G32_FLOAT;
 				}
 				else if(res.type == nrd::ResourceType::IN_VIEWZ)
 				{

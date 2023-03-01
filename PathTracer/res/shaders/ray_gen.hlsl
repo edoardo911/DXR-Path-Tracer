@@ -3,7 +3,7 @@
 cbuffer cbPass: register(b0)
 {
     float4x4 gView;
-    float4x4 gViewProj;
+    float4x4 gViewProjPrev;
     float4x4 gInvView;
     float4x4 gInvProj;
     float gFov;
@@ -16,12 +16,11 @@ cbuffer cbPass: register(b0)
 }
 
 RWTexture2D<float4> gOutput: register(u0);
-RWTexture2D<float2> gLastPosition: register(u1);
-RWTexture2D<float4> gNormalAndRoughness: register(u2);
-RWTexture2D<float> gDepthBuffer: register(u3);
-RWTexture2D<float2> gMotionVectorBuffer: register(u4);
-RWTexture2D<float> gZDepth: register(u5);
-RWTexture2D<float4> gAlbedoMap: register(u6);
+RWTexture2D<float4> gNormalAndRoughness: register(u1);
+RWTexture2D<float> gDepthBuffer: register(u2);
+RWTexture2D<float2> gMotionVectorBuffer: register(u3);
+RWTexture2D<float> gZDepth: register(u4);
+RWTexture2D<float4> gAlbedoMap: register(u5);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
@@ -50,6 +49,18 @@ float4 REBLUR_FrontEnd_PackRadianceAndNormHitDist(float3 radiance, float normHit
     radiance = _NRD_LinearToYCoCg(radiance);
 
     return float4(radiance, normHitDist);
+}
+
+float _REBLUR_GetHitDistanceNormalization(float viewZ, float4 hitDistParams, float roughness = 1.0)
+{
+    return (hitDistParams.x + abs(viewZ) * hitDistParams.y) * lerp(1.0, hitDistParams.z, saturate(exp2(hitDistParams.w * roughness * roughness)));
+}
+
+float REBLUR_FrontEnd_GetNormHitDist(float hitDist, float viewZ, float4 hitDistParams, float roughness = 1.0)
+{
+    float f = _REBLUR_GetHitDistanceNormalization(viewZ, hitDistParams, roughness);
+
+    return saturate(hitDist / f);
 }
 
 [shader("raygeneration")]
@@ -85,11 +96,16 @@ void RayGen()
         
     gDepthBuffer[launchIndex] = min(pp.hPosAndT.w / (gFarPlane - gNearPlane), 1.0F);
     
-    float2 lastPos = gLastPosition[launchIndex];
-    gMotionVectorBuffer[launchIndex] = pp.hPosAndT.w < 0.0 ? 0.0 : lastPos - pp.hPosAndT.xy;
-    gLastPosition[launchIndex] = pp.hPosAndT.xy;
+    //TODO prev world multiplication for moving objects
+    float4 lastPosH = mul(float4(pp.hPosAndT.xyz, 1.0), gViewProjPrev);
+    float2 uv = (lastPosH.xy / lastPosH.w) * float2(0.5, -0.5) + 0.5;
+    
+    float2 sampleUv = d * float2(0.5, 0.5) + 0.5;
+    
+    gMotionVectorBuffer[launchIndex] = (uv - sampleUv) * dims;
     gNormalAndRoughness[launchIndex] = payload.normalAndRough;
     gZDepth[launchIndex] = payload.albedoAndZ.w;
-    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb / payload.albedoAndZ.rgb, payload.colorAndDistance.a);
+    float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, payload.albedoAndZ.w, float4(3.0, 0.1, 20.0, -25.0));
+    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT);
     gAlbedoMap[launchIndex].rgb = payload.albedoAndZ.rgb;
 }

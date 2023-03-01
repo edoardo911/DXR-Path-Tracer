@@ -17,7 +17,7 @@ SamplerState gsamTrilinearWrap: register(s2);
 cbuffer cbPass: register(b0)
 {
     float4x4 gView;
-    float4x4 gViewProj;
+    float4x4 gViewProjPrev;
     float4x4 gInvView;
     float4x4 gInvProj;
     float gFov;
@@ -32,6 +32,7 @@ cbuffer cbPass: register(b0)
 cbuffer objPass: register(b1)
 {
     float4x4 gWorld;
+    float4x4 gToPrevWorld;
     int gDiffuseIndex;
     int gNormalIndex;
     uint gMatIndex;
@@ -144,11 +145,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 				 vertices[indices[vertId + 2]].normal * barycentrics.z;
     float3 tangent = vertices[indices[vertId]].tangent * barycentrics.x + vertices[indices[vertId + 1]].tangent * barycentrics.y +
 				 vertices[indices[vertId + 2]].tangent * barycentrics.z;
-    float3 pos = vertices[indices[vertId]].pos * barycentrics.x + vertices[indices[vertId + 1]].pos * barycentrics.y +
-			     vertices[indices[vertId + 2]].pos * barycentrics.z;
     norm = normalize(mul(norm, (float3x3) gWorld));
     tangent = normalize(mul(tangent, (float3x3) gWorld));
-    pos = mul(float4(pos, 1.0), gView);
     
     uint seed = initRand(DispatchRaysIndex().x * gFrameIndex, DispatchRaysIndex().y * gFrameIndex, 16);
     
@@ -279,28 +277,29 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	
     TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
     if(reflPayload.colorAndDistance.a > 0.0F)
-    {
         indirectLight = reflPayload.colorAndDistance.rgb;
-        payload.colorAndDistance.a = reflPayload.colorAndDistance.a;
-    }
     
     //ambient light
     float4 ambient = gAmbientLight * diffuseAlbedo;
-    float4 hitColor = float4(ambient.rgb, RayTCurrent());
+    float4 hitColor = float4(ambient.rgb, 1e7);
     
     //ambient occlusion
     RayDesc aoRay;
     aoRay.Origin = worldOrigin;
     aoRay.Direction = calcRTAODirection(seed);
     aoRay.TMin = 0.001;
-    aoRay.TMax = 0.071;
+    aoRay.TMax = 0.091;
 
     AOHitInfo aoPayload;
     aoPayload.isHit = false;
+    aoPayload.hitT = 0.0;
 
     TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 2, 0, 2, aoRay, aoPayload);
     if(aoPayload.isHit)
+    {
         hitColor.rgb *= 0.1;
+        hitColor.a = aoPayload.hitT;
+    }
     
     //shadows
     float3 shadowFactor = float3(1.0, 1.0, 1.0);
@@ -457,7 +456,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         //hitColor.a = refrPayload.colorAndDistance.a;
     }
     
-    payload.colorAndDistance = hitColor;
+    payload.colorAndDistance = float4(hitColor.rgb / diffuseAlbedo.rgb, hitColor.a);
     payload.normalAndRough = NRD_FrontEnd_PackNormalAndRoughness(norm, material.roughness);
-    payload.albedoAndZ = float4(diffuseAlbedo.rgb, pos.z);
-}
+    payload.albedoAndZ = float4(diffuseAlbedo.rgb, mul(float4(worldOrigin, 1.0), gView).z);
+} 
