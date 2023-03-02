@@ -112,9 +112,12 @@ namespace RT
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedComposite;
 
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedTexture;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedSpecular;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mNormalRoughness;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mAlbedoMap;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mSpecAlbedo;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mZDepth;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mSpecular;
 
 		NVSDK_NGX_Handle* feature = nullptr;
 		NVSDK_NGX_Parameter* params = nullptr;

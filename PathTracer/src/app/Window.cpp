@@ -275,7 +275,7 @@ namespace RT
 	bool Window::initDenoiser()
 	{
 		nrd::MethodDesc methodDesc = {};
-		methodDesc.method = nrd::Method::REBLUR_DIFFUSE;
+		methodDesc.method = nrd::Method::REBLUR_DIFFUSE_SPECULAR;
 		methodDesc.fullResolutionWidth = settings.dlss ? settings.dlssWidth : settings.width;
 		methodDesc.fullResolutionHeight = settings.dlss ? settings.dlssHeight : settings.height;
 
@@ -481,7 +481,10 @@ namespace RT
 		resDesc.Format = settings.backBufferFormat;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture)));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mAlbedoMap)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mSpecAlbedo)));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedComposite)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedSpecular)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mSpecular)));
 
 		resDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mNormalRoughness)));
@@ -496,7 +499,7 @@ namespace RT
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mDenoiserSamplerHeap)));
 
-		heapDesc.NumDescriptors = 15;
+		heapDesc.NumDescriptors = 30;
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		for(UINT32 i = 0; i < desc.descriptorPoolDesc.setsMaxNum; ++i)
 			ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mDenoiserResourcesHeaps[i])));
@@ -847,6 +850,21 @@ namespace RT
 				{
 					tex = mNormalRoughness.Get();
 					format = DXGI_FORMAT_R10G10B10A2_UNORM;
+				}
+				else if(res.type == nrd::ResourceType::IN_BASECOLOR_METALNESS)
+				{
+					tex = mAlbedoMap.Get();
+					format = settings.backBufferFormat;
+				}
+				else if(res.type == nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST)
+				{
+					tex = mDenoisedSpecular.Get();
+					format = settings.backBufferFormat;
+				}
+				else if(res.type == nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST)
+				{
+					tex = mSpecular.Get();
+					format = settings.backBufferFormat;
 				}
 				else
 					::OutputDebugString(L"Error");

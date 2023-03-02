@@ -21,6 +21,8 @@ RWTexture2D<float> gDepthBuffer: register(u2);
 RWTexture2D<float2> gMotionVectorBuffer: register(u3);
 RWTexture2D<float> gZDepth: register(u4);
 RWTexture2D<float4> gAlbedoMap: register(u5);
+RWTexture2D<float4> gSpecularMap: register(u6);
+RWTexture2D<float4> gSpecAlbedo: register(u7);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
@@ -63,6 +65,25 @@ float REBLUR_FrontEnd_GetNormHitDist(float hitDist, float viewZ, float4 hitDistP
     return saturate(hitDist / f);
 }
 
+float2 _NRD_EncodeUnitVector(float3 v, const bool bSigned = false)
+{
+    v /= dot(abs(v), 1.0);
+
+    float2 octWrap = (1.0 - abs(v.yx)) * (step(0.0, v.xy) * 2.0 - 1.0);
+    v.xy = v.z >= 0.0 ? v.xy : octWrap;
+
+    return bSigned ? v.xy : v.xy * 0.5 + 0.5;
+}
+
+float4 NRD_FrontEnd_PackNormalAndRoughness(float3 N, float roughness)
+{
+    float4 p;
+    p.xy = _NRD_EncodeUnitVector(N, false);
+    p.z = roughness;
+    p.w = 0;
+    return p;
+}
+
 [shader("raygeneration")]
 void RayGen()
 {
@@ -80,8 +101,10 @@ void RayGen()
     
     HitInfo payload;
     payload.colorAndDistance = float4(0, 0, 0, 0);
+    payload.specularAndDistance = float4(0, 0, 0, 0);
     payload.normalAndRough = float4(0, 0, 0, 0);
     payload.albedoAndZ = float4(0, 0, 0, gFarPlane - gNearPlane);
+    payload.specAlbedoAndMetalness = float4(0, 0, 0, 0);
     payload.recursionDepth = 1;
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
@@ -103,9 +126,14 @@ void RayGen()
     float2 sampleUv = d * float2(0.5, 0.5) + 0.5;
     
     gMotionVectorBuffer[launchIndex] = (uv - sampleUv) * dims;
-    gNormalAndRoughness[launchIndex] = payload.normalAndRough;
+    gNormalAndRoughness[launchIndex] = NRD_FrontEnd_PackNormalAndRoughness(payload.normalAndRough.xyz, payload.normalAndRough.w);
     gZDepth[launchIndex] = payload.albedoAndZ.w;
+    
     float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, payload.albedoAndZ.w, float4(3.0, 0.1, 20.0, -25.0));
     gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT);
-    gAlbedoMap[launchIndex].rgb = payload.albedoAndZ.rgb;
+    gAlbedoMap[launchIndex] = float4(payload.albedoAndZ.rgb, payload.specAlbedoAndMetalness.a);
+    
+    hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, payload.albedoAndZ.w, float4(3.0, 0.1, 20.0, -25.0));
+    gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, hitT);
+    gSpecAlbedo[launchIndex] = float4(payload.specAlbedoAndMetalness.rgb, payload.normalAndRough.a);
 }
