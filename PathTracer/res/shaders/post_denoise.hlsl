@@ -5,6 +5,8 @@ Texture2D gAlbedo: register(t1);
 Texture2D gSpecular: register(t2);
 Texture2D gSpecAlbedo: register(t3);
 
+//TODO remove spec albedo
+
 //TODO include NRD.hlsli
 float3 _NRD_YCoCgToLinear(float3 color)
 {
@@ -27,6 +29,10 @@ float4 REBLUR_BackEnd_UnpackRadianceAndNormHitDist(float4 data)
 
 //#define VALIDATION
 
+//TODO refraction
+//TODO indirect light
+//TODO sky
+
 [numthreads(16, 16, 1)]
 void main(uint3 pixel: SV_DispatchThreadID)
 {
@@ -40,6 +46,8 @@ void main(uint3 pixel: SV_DispatchThreadID)
 #ifdef VALIDATION
     gOutput[pixel.xy] = packedColor;
 #else
-    gOutput[pixel.xy] = float4(lerp(color.rgb * a.rgb, specular.rgb, (a.a + sa.a) / 2), 0);
+    float3 Ldiff = color.rgb * a.rgb * (1.0 - a.a);
+    float3 Lspec = specular.rgb;
+    gOutput[pixel.xy] = float4((Ldiff + Lspec) * color.a * specular.a, 0);
 #endif
 }

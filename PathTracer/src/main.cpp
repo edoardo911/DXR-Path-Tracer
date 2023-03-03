@@ -676,7 +676,8 @@ void App::allocateOutputResources()
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateShaderResourceView(mDenoisedSpecular.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateShaderResourceView(mSpecAlbedo.Get(), &srvDesc, pdHandle);
+	srvDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
+	md3dDevice->CreateShaderResourceView(mNormalRoughness.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mDenoisedComposite.Get(), nullptr, &uavDesc, pdHandle);
 }
@@ -757,11 +758,16 @@ void App::draw()
 	mCommandList->DispatchRays(&desc);
 
 	denoise(nrdSettings, mOutputResource.Get());
-
+	
 	postDenoise->dispatch(mCommandList.Get(), settings.width, settings.height); //TODO DLSS sizes
 
 	if(settings.dlss)
 		DLSS(mOutputResource.Get(), jitter.x, jitter.y);
+	else
+	{
+		//TODO temporal
+	}
+
 	if(settings.dlss || settings.RTAA > 1)
 		phase = (phase + 1) % phaseCount;
 
@@ -960,14 +966,6 @@ void App::keyboardInput()
 
 	if(keyboard.isKeyDown(VK_SPACE))
 		mMainPassCB.frameIndex = 1;
-
-	if(keyboard.isKeyPressed(VK_F1))
-	{
-		if(nrdSettings.splitScreen > 0)
-			nrdSettings.splitScreen = 0;
-		else
-			nrdSettings.splitScreen = 0.5;
-	}
 	if(keyboard.isKeyPressed(VK_F11))
 		toggleFullscreen();
 }

@@ -130,10 +130,10 @@ void RayGen()
     gZDepth[launchIndex] = payload.albedoAndZ.w;
     
     float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, payload.albedoAndZ.w, float4(3.0, 0.1, 20.0, -25.0));
-    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT);
+    gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT, true);
     gAlbedoMap[launchIndex] = float4(payload.albedoAndZ.rgb, payload.specAlbedoAndMetalness.a);
     
     hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, payload.albedoAndZ.w, float4(3.0, 0.1, 20.0, -25.0));
-    gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, hitT);
-    gSpecAlbedo[launchIndex] = float4(payload.specAlbedoAndMetalness.rgb, payload.normalAndRough.a);
+    gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, hitT, true);
+    gSpecAlbedo[launchIndex] = float4(payload.specAlbedoAndMetalness.rgb, 0);
 }

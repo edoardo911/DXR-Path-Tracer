@@ -98,6 +98,7 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
 
     specAlbedo = fresnelFactor * roughnessFactor;
     specAlbedo = specAlbedo / (specAlbedo + 1.0F);
+    specAlbedo *= lightStrength;
 
     return lightStrength;
 }
