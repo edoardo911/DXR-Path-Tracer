@@ -22,7 +22,7 @@ RWTexture2D<float2> gMotionVectorBuffer: register(u3);
 RWTexture2D<float> gZDepth: register(u4);
 RWTexture2D<float4> gAlbedoMap: register(u5);
 RWTexture2D<float4> gSpecularMap: register(u6);
-RWTexture2D<float4> gSpecAlbedo: register(u7);
+RWTexture2D<float4> gSky: register(u7);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
@@ -75,12 +75,12 @@ float2 _NRD_EncodeUnitVector(float3 v, const bool bSigned = false)
     return bSigned ? v.xy : v.xy * 0.5 + 0.5;
 }
 
-float4 NRD_FrontEnd_PackNormalAndRoughness(float3 N, float roughness)
+float4 NRD_FrontEnd_PackNormalAndRoughness(float3 N, float roughness, uint materialID = 0)
 {
     float4 p;
     p.xy = _NRD_EncodeUnitVector(N, false);
     p.z = roughness;
-    p.w = 0;
+    p.w = saturate(materialID / 3.0);
     return p;
 }
 
@@ -103,8 +103,8 @@ void RayGen()
     payload.colorAndDistance = float4(0, 0, 0, 0);
     payload.specularAndDistance = float4(0, 0, 0, 0);
     payload.normalAndRough = float4(0, 0, 0, 0);
-    payload.albedoAndZ = float4(0, 0, 0, gFarPlane - gNearPlane);
-    payload.specAlbedoAndMetalness = float4(0, 0, 0, 0);
+    payload.albedoAndZ = float4(0, 0, 0, -1);
+    payload.metalness = 0;
     payload.recursionDepth = 1;
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
@@ -127,13 +127,18 @@ void RayGen()
     
     gMotionVectorBuffer[launchIndex] = (uv - sampleUv) * dims;
     gNormalAndRoughness[launchIndex] = NRD_FrontEnd_PackNormalAndRoughness(payload.normalAndRough.xyz, payload.normalAndRough.w);
-    gZDepth[launchIndex] = payload.albedoAndZ.w;
     
-    float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, payload.albedoAndZ.w, float4(3.0, 0.1, 20.0, -25.0));
+    float z = payload.albedoAndZ.w;
+    if(z < 0)
+        z = gFarPlane - gNearPlane;
+    gZDepth[launchIndex] = z;
+    
+    float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, z, float4(3.0, 0.1, 20.0, -25.0));
     gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT, true);
-    gAlbedoMap[launchIndex] = float4(payload.albedoAndZ.rgb, payload.specAlbedoAndMetalness.a);
-    
-    hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, payload.albedoAndZ.w, float4(3.0, 0.1, 20.0, -25.0));
-    gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, hitT, true);
-    gSpecAlbedo[launchIndex] = float4(payload.specAlbedoAndMetalness.rgb, 0);
+    gAlbedoMap[launchIndex] = float4(payload.albedoAndZ.rgb, payload.metalness);
+    gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, payload.specularAndDistance.a, true);
+    if(payload.albedoAndZ.w < 0)
+        gSky[launchIndex] = float4(payload.colorAndDistance.rgb, 1);
+    else
+        gSky[launchIndex] = 0;
 }

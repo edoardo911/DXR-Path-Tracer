@@ -280,10 +280,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
     TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 2, 0, 2, aoRay, aoPayload);
     if(aoPayload.isHit)
-    {
-        //hitColor.rgb *= 0.0;
         hitColor.a = aoPayload.hitT;
-    }
     
     //shadows
     float3 shadowFactor = float3(1.0, 1.0, 1.0);
@@ -374,6 +371,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     hitColor.rgb += diffuseAlbedo.rgb * directLight.rgb;
     if(shadowFactor.x == 1.0)
         payload.specularAndDistance.rgb = specAlbedo;
+    payload.metalness = material.metallic;
     
     //reflections
     float rayNormDot = dot(norm, -WorldRayDirection());
@@ -402,11 +400,11 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
         
         float distanceFactor;
-        if(reflPayload.colorAndDistance.a > 0)
+        if (reflPayload.colorAndDistance.a > 0)
             distanceFactor = 1.0F - clamp(reflPayload.colorAndDistance.a / (50 * shininess), 0.0F, 1.0F);
         else
             distanceFactor = min(shininess * 3, 1.0F);
-        payload.specularAndDistance.rgb += reflPayload.colorAndDistance.rgb;
+        payload.specularAndDistance.rgb = lerp(reflPayload.colorAndDistance.rgb, payload.specularAndDistance.rgb, fresnelFactor * material.metallic * distanceFactor);
         payload.specularAndDistance.a = reflPayload.colorAndDistance.a;
     }
     
@@ -440,7 +438,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
             distanceFactor = 1.0F - clamp(refrPayload.colorAndDistance.a / (50 * visibility), 0.0F, 1.0F);
         else
             distanceFactor = visibility;
-        //hitColor.rgb = lerp(hitColor.rgb, refrPayload.colorAndDistance.rgb, visibility * fresnelFactor * distanceFactor);
+        payload.specularAndDistance.rgb = lerp(refrPayload.colorAndDistance.rgb, payload.specularAndDistance.rgb, saturate(fresnelFactor * material.metallic * distanceFactor));
+        payload.specularAndDistance.a = refrPayload.colorAndDistance.a;
+        payload.metalness = 1.0 - material.diffuseAlbedo.a;
     }
     
     if(payload.recursionDepth == 1)
@@ -448,5 +448,4 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     payload.colorAndDistance = hitColor;
     payload.normalAndRough = float4(norm, material.roughness);
     payload.albedoAndZ = float4(diffuseAlbedo.rgb, mul(float4(worldOrigin, 1.0), gView).z);
-    payload.specAlbedoAndMetalness.a = material.metallic;
-} 
+}

@@ -115,7 +115,7 @@ namespace RT
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedSpecular;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mNormalRoughness;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mAlbedoMap;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mSpecAlbedo;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mSky;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mZDepth;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mSpecular;
 

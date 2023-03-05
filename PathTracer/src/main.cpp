@@ -512,7 +512,7 @@ void App::createRaytracingPipeline()
 	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["posClosestHit"].Get(), { L"PosHitGroup" });
 
-	pipeline.SetMaxPayloadSize(20 * sizeof(float) + 1 * sizeof(UINT));
+	pipeline.SetMaxPayloadSize(17 * sizeof(float) + 1 * sizeof(UINT));
 	pipeline.SetMaxAttributeSize(2 * sizeof(float));
 	pipeline.SetMaxRecursionDepth(4);
 
@@ -658,7 +658,7 @@ void App::allocateOutputResources()
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mSpecular.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateUnorderedAccessView(mSpecAlbedo.Get(), nullptr, &uavDesc, hDescriptor);
+	md3dDevice->CreateUnorderedAccessView(mSky.Get(), nullptr, &uavDesc, hDescriptor);
 
 	//post denoising heap
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -676,8 +676,7 @@ void App::allocateOutputResources()
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateShaderResourceView(mDenoisedSpecular.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
-	srvDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
-	md3dDevice->CreateShaderResourceView(mNormalRoughness.Get(), &srvDesc, pdHandle);
+	md3dDevice->CreateShaderResourceView(mSky.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mDenoisedComposite.Get(), nullptr, &uavDesc, pdHandle);
 }

@@ -10,7 +10,7 @@ struct HitInfo
     float4 specularAndDistance;
     float4 normalAndRough;
     float4 albedoAndZ;
-    float4 specAlbedoAndMetalness;
+    float metalness;
     uint recursionDepth;
 };
 
