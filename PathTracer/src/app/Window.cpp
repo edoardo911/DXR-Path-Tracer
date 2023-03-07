@@ -474,9 +474,8 @@ namespace RT
 			ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&mDenoiserResources[i])));
 		}
 
-		//TODO DLSS sizes
-		resDesc.Width = settings.width;
-		resDesc.Height = settings.height;
+		resDesc.Width = settings.dlss ? settings.dlssWidth : settings.width;
+		resDesc.Height = settings.dlss ? settings.dlssHeight : settings.height;
 		resDesc.MipLevels = 1;
 		resDesc.Format = settings.backBufferFormat;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture)));

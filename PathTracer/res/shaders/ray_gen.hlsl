@@ -136,7 +136,9 @@ void RayGen()
     float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, z, float4(3.0, 0.1, 20.0, -25.0));
     gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT, true);
     gAlbedoMap[launchIndex] = float4(payload.albedoAndZ.rgb, payload.metalness);
-    gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, payload.specularAndDistance.a, true);
+    
+    hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, z, float4(3.0, 0.1, 20.0, -25.0), payload.normalAndRough.w);
+    gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, hitT, true);
     if(payload.albedoAndZ.w < 0)
         gSky[launchIndex] = float4(payload.colorAndDistance.rgb, 1);
     else

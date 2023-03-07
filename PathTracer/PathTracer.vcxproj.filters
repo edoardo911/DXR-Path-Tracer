@@ -69,6 +69,9 @@
     <ClCompile Include="src\rendering\PostDenoise.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\rendering\Temporal.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\utils\UploadBuffer.h">
@@ -143,8 +146,12 @@
     <ClInclude Include="src\rendering\PostDenoise.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\rendering\Temporal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="res\shaders\post_denoise.hlsl" />
+    <FxCompile Include="res\shaders\temporal.hlsl" />
   </ItemGroup>
 </Project>

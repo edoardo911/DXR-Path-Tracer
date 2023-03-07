@@ -10,6 +10,7 @@
 
 #include "rendering/FrameResource.h"
 #include "rendering/PostDenoise.h"
+#include "rendering/Temporal.h"
 #include "rendering/Camera.h"
 
 #include "raytracing/ShaderBindingTableGenerator.h"
@@ -120,6 +121,7 @@ private:
 	nrd::CommonSettings nrdSettings = {};
 
 	std::unique_ptr<PostDenoise> postDenoise;
+	std::unique_ptr<Temporal> temporal;
 };
 
 int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance, _In_ PSTR cmdLine, _In_ int showCmd)
@@ -185,6 +187,7 @@ bool App::initialize()
 		return false;
 
 	postDenoise = std::make_unique<PostDenoise>(md3dDevice.Get(), L"res/shaders/bin/post_denoise.cso");
+	temporal = std::make_unique<Temporal>(md3dDevice.Get(), L"res/shaders/bin/temporal.cso");
 
 	ThrowIfFailed(mDirectCmdListAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
@@ -696,7 +699,7 @@ void App::update()
 
 	mFrameInExecution = mCurrFrameResource->fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->fence;
 
-	if(mMainPassCB.frameIndex > 63)
+	if(mMainPassCB.frameIndex > 255)
 		mMainPassCB.frameIndex = 1;
 	
 	if(!mFrameInExecution)
@@ -758,14 +761,12 @@ void App::draw()
 
 	denoise(nrdSettings, mOutputResource.Get());
 	
-	postDenoise->dispatch(mCommandList.Get(), settings.width, settings.height); //TODO DLSS sizes
+	postDenoise->dispatch(mCommandList.Get(), settings.dlss ? settings.dlssWidth : settings.width, settings.dlss ? settings.dlssHeight : settings.height);
 
 	if(settings.dlss)
-		DLSS(mOutputResource.Get(), jitter.x, jitter.y);
+		DLSS(mDenoisedComposite.Get(), jitter.x, jitter.y);
 	else
-	{
-		//TODO temporal
-	}
+		temporal->dispatch(mCommandList.Get(), settings.dlss ? settings.dlssWidth : settings.width, settings.dlss ? settings.dlssHeight : settings.height);
 
 	if(settings.dlss || settings.RTAA > 1)
 		phase = (phase + 1) % phaseCount;
@@ -903,15 +904,14 @@ void App::updateDenoiser()
 	nrdSettings.inputSubrectOrigin[0] = 0;
 	nrdSettings.inputSubrectOrigin[1] = 0;
 	nrdSettings.frameIndex = mMainPassCB.frameIndex;
-	nrdSettings.disocclusionThreshold = 0.1F;
+	nrdSettings.disocclusionThreshold = 0.05F;
 	nrdSettings.enableValidation = false;
 	nrdSettings.splitScreen = 0.0F;
 	nrdSettings.denoisingRange = 9000;
 	nrdSettings.isMotionVectorInWorldSpace = false;
 	nrdSettings.isBaseColorMetalnessAvailable = true;
-	//TODO dlss sizes
-	nrdSettings.motionVectorScale[0] = 1.0F / settings.width;
-	nrdSettings.motionVectorScale[1] = 1.0F / settings.height;
+	nrdSettings.motionVectorScale[0] = 1.0F / (settings.dlss ? settings.dlssWidth : settings.width);
+	nrdSettings.motionVectorScale[1] = 1.0F / (settings.dlss ? settings.dlssHeight : settings.height);
 	nrdSettings.motionVectorScale[2] = 0.0F;
 }
 

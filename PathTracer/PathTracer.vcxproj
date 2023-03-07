@@ -152,6 +152,7 @@
     <ClCompile Include="src\rendering\Camera.cpp" />
     <ClCompile Include="src\rendering\FrameResource.cpp" />
     <ClCompile Include="src\rendering\PostDenoise.cpp" />
+    <ClCompile Include="src\rendering\Temporal.cpp" />
     <ClCompile Include="src\utils\GeometryGenerator.cpp" />
     <ClCompile Include="src\utils\ModelLoader.cpp" />
     <ClCompile Include="src\utils\TextureLoader.cpp" />
@@ -172,6 +173,7 @@
     <ClInclude Include="src\rendering\Camera.h" />
     <ClInclude Include="src\rendering\FrameResource.h" />
     <ClInclude Include="src\rendering\PostDenoise.h" />
+    <ClInclude Include="src\rendering\Temporal.h" />
     <ClInclude Include="src\utils\d3dutil.h" />
     <ClInclude Include="src\utils\d3dx12.h" />
     <ClInclude Include="src\utils\GeometryGenerator.h" />
@@ -196,6 +198,19 @@
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="res\shaders\temporal.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

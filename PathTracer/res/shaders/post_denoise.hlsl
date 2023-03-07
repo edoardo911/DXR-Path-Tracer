@@ -32,6 +32,7 @@ float4 REBLUR_BackEnd_UnpackRadianceAndNormHitDist(float4 data)
 [numthreads(16, 16, 1)]
 void main(uint3 pixel: SV_DispatchThreadID)
 {
+    //TODO do not generate NaNs
     float4 packedColor = gInput[pixel.xy];
     float4 packedSpecular = gSpecular[pixel.xy];
     
@@ -42,9 +43,9 @@ void main(uint3 pixel: SV_DispatchThreadID)
 #ifdef VALIDATION
     gOutput[pixel.xy] = packedColor;
 #else
-    float3 Ldiff = color.rgb * a.rgb * (1.0 - a.a);
+    float3 Ldiff = color.rgb * a.rgb;
     float3 Lspec = specular.rgb;
-    float occlusion = color.a * specular.a;
+    float occlusion = color.a;
     float3 finalColor = sky.w > 0 ? sky.rgb : (Ldiff + Lspec) * occlusion;
     gOutput[pixel.xy] = float4(finalColor, 0);
 #endif
