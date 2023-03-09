@@ -15,7 +15,7 @@ namespace RT
 
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		desc.NumDescriptors = 5;
+		desc.NumDescriptors = 6;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&mHeap)));
 	}
@@ -23,9 +23,9 @@ namespace RT
 	void PostDenoise::buildRootSignature(ID3D12Device* device)
 	{
 		CD3DX12_DESCRIPTOR_RANGE inputRange;
-		inputRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 0, 0);
+		inputRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 0, 0, 0);
 		CD3DX12_DESCRIPTOR_RANGE outputRange;
-		outputRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, 4);
+		outputRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, 5);
 
 		CD3DX12_ROOT_PARAMETER parameter;
 

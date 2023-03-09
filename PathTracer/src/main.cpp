@@ -333,11 +333,11 @@ void App::buildMaterials()
 	redBall->DiffuseAlbedo = { 1.0F, 0.0F, 0.0F, 0.2F };
 	redBall->matCBIndex = 1;
 	redBall->Roughness = 0.05F;
-	redBall->refractionIndex = 0.4F;
+	redBall->refractionIndex = 1.0F;
 	mMaterials.push_back(std::move(redBall));
 
 	auto wall = std::make_unique<Material>();
-	wall->DiffuseAlbedo = { 0.0F, 1.0F, 0.0F, 1.0F };
+	wall->DiffuseAlbedo = { 0.0F, 1.0F, 1.0F, 1.0F };
 	wall->matCBIndex = 2;
 	wall->Roughness = 0.2F;
 	mMaterials.push_back(std::move(wall));
@@ -423,14 +423,14 @@ void App::createRayGenSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddHeapRangesParameter({ { 0, 8, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8 } });
+	rsc.AddHeapRangesParameter({ { 0, 9, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 } });
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
 void App::createMissSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 12 } });
+	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 13 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -450,7 +450,7 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0, 1);
-	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 } });
+	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -515,7 +515,7 @@ void App::createRaytracingPipeline()
 	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["posClosestHit"].Get(), { L"PosHitGroup" });
 
-	pipeline.SetMaxPayloadSize(17 * sizeof(float) + 1 * sizeof(UINT));
+	pipeline.SetMaxPayloadSize(20 * sizeof(float) + 1 * sizeof(UINT));
 	pipeline.SetMaxAttributeSize(2 * sizeof(float));
 	pipeline.SetMaxRecursionDepth(4);
 
@@ -590,14 +590,14 @@ void App::loadTextures()
 void App::buildDescriptorHeap()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = 13;
+	heapDesc.NumDescriptors = 14;
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
 	allocateOutputResources();
-	hDescriptor.Offset(8, mCbvSrvUavDescriptorSize);
+	hDescriptor.Offset(9, mCbvSrvUavDescriptorSize);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -662,6 +662,8 @@ void App::allocateOutputResources()
 	md3dDevice->CreateUnorderedAccessView(mSpecular.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mSky.Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mSpecAlbedo.Get(), nullptr, &uavDesc, hDescriptor);
 
 	//post denoising heap
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -680,6 +682,8 @@ void App::allocateOutputResources()
 	md3dDevice->CreateShaderResourceView(mDenoisedSpecular.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateShaderResourceView(mSky.Get(), &srvDesc, pdHandle);
+	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateShaderResourceView(mSpecAlbedo.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mDenoisedComposite.Get(), nullptr, &uavDesc, pdHandle);
 }

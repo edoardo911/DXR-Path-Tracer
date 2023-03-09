@@ -484,6 +484,7 @@ namespace RT
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedComposite)));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedSpecular)));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mSpecular)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mSpecAlbedo)));
 
 		resDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mNormalRoughness)));

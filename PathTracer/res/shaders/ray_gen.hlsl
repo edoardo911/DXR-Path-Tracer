@@ -23,6 +23,7 @@ RWTexture2D<float> gZDepth: register(u4);
 RWTexture2D<float4> gAlbedoMap: register(u5);
 RWTexture2D<float4> gSpecularMap: register(u6);
 RWTexture2D<float4> gSky: register(u7);
+RWTexture2D<float4> gSpecAlbedo: register(u8);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 
@@ -104,6 +105,7 @@ void RayGen()
     payload.specularAndDistance = float4(0, 0, 0, 0);
     payload.normalAndRough = float4(0, 0, 0, 0);
     payload.albedoAndZ = float4(0, 0, 0, -1);
+    payload.specAlbedo = float3(0, 0, 0);
     payload.metalness = 0;
     payload.recursionDepth = 1;
     
@@ -143,4 +145,5 @@ void RayGen()
         gSky[launchIndex] = float4(payload.colorAndDistance.rgb, 1);
     else
         gSky[launchIndex] = 0;
+    gSpecAlbedo[launchIndex] = float4(payload.specAlbedo, 0);
 }

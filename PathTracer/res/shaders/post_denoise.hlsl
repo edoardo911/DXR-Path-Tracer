@@ -4,6 +4,7 @@ Texture2D gInput: register(t0);
 Texture2D gAlbedo: register(t1);
 Texture2D gSpecular: register(t2);
 Texture2D gSky: register(t3);
+Texture2D gSpecAlbedo: register(t4);
 
 //TODO include NRD.hlsli
 float3 _NRD_YCoCgToLinear(float3 color)
@@ -43,10 +44,9 @@ void main(uint3 pixel: SV_DispatchThreadID)
 #ifdef VALIDATION
     gOutput[pixel.xy] = packedColor;
 #else
-    float3 Ldiff = color.rgb * a.rgb;
-    float3 Lspec = specular.rgb;
-    float occlusion = color.a;
-    float3 finalColor = sky.w > 0 ? sky.rgb : (Ldiff + Lspec) * occlusion;
+    float3 Ldiff = color.rgb * color.a * a.rgb * (1.0 - a.a);
+    float3 Lspec = specular.rgb * gSpecAlbedo[pixel.xy].rgb * a.a;
+    float3 finalColor = sky.rgb + Ldiff + Lspec;
     gOutput[pixel.xy] = float4(finalColor, 0);
 #endif
 }
