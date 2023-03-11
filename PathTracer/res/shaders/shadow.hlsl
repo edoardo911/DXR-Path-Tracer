@@ -1,23 +1,17 @@
 #include "common.hlsli"
 
 StructuredBuffer<Material> gMaterials: register(t0);
-
-cbuffer objPass: register(b0)
-{
-    float4x4 gWorld;
-    int gDiffuseIndex;
-    int gNormalIndex;
-    uint gMatIndex;
-}
+StructuredBuffer<ObjectData> gData: register(t1);
 
 #define SHADOW_BIAS 0.3F
 
 [shader("closesthit")]
 void ShadowClosestHit(inout ShadowHitInfo hit, Attributes bary)
 {
-    Material data = gMaterials[gMatIndex];
+    ObjectData objData = gData[InstanceID()];
+    Material data = gMaterials[objData.matIndex];
 
-    hit.occlusion = min((data.diffuseAlbedo.a / 2.0F) + SHADOW_BIAS, 1.0F);
+    hit.occlusion = min(data.diffuseAlbedo.a + SHADOW_BIAS, 1.0F);
     hit.distance = RayTCurrent();
 }
 

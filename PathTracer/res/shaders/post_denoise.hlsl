@@ -1,10 +1,8 @@
 RWTexture2D<float4> gOutput: register(u0);
 
 Texture2D gInput: register(t0);
-Texture2D gAlbedo: register(t1);
-Texture2D gSpecular: register(t2);
-Texture2D gSky: register(t3);
-Texture2D gSpecAlbedo: register(t4);
+Texture2D gSpecular: register(t1);
+Texture2D gSky: register(t2);
 
 //TODO include NRD.hlsli
 float3 _NRD_YCoCgToLinear(float3 color)
@@ -26,27 +24,18 @@ float4 REBLUR_BackEnd_UnpackRadianceAndNormHitDist(float4 data)
     return data;
 }
 
-//#define VALIDATION
-
-//TODO indirect light
-
 [numthreads(16, 16, 1)]
 void main(uint3 pixel: SV_DispatchThreadID)
 {
-    //TODO do not generate NaNs
     float4 packedColor = gInput[pixel.xy];
     float4 packedSpecular = gSpecular[pixel.xy];
     
     float4 color = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedColor);
     float4 specular = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedSpecular);
-    float4 a = gAlbedo[pixel.xy];
     float4 sky = gSky[pixel.xy];
-#ifdef VALIDATION
-    gOutput[pixel.xy] = packedColor;
-#else
-    float3 Ldiff = color.rgb * color.a * a.rgb * (1.0 - a.a);
-    float3 Lspec = specular.rgb * gSpecAlbedo[pixel.xy].rgb * a.a;
-    float3 finalColor = sky.rgb + Ldiff + Lspec;
+
+    float3 Ldiff = color.rgb * color.a;
+    float3 Lspec = specular.rgb;
+    float3 finalColor = sky.a > 0 ? sky.rgb : (Ldiff + Lspec);
     gOutput[pixel.xy] = float4(finalColor, 0);
-#endif
 }

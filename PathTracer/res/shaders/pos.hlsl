@@ -4,6 +4,7 @@
 void PosClosestHit(inout PosPayload payload, Attributes attrib)
 {
     payload.hPosAndT = float4(WorldRayOrigin() + RayTCurrent() * WorldRayDirection(), RayTCurrent());
+    payload.instanceID = InstanceID();
 }
 
 [shader("miss")]

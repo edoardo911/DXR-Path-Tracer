@@ -20,12 +20,11 @@ RWTexture2D<float4> gNormalAndRoughness: register(u1);
 RWTexture2D<float> gDepthBuffer: register(u2);
 RWTexture2D<float2> gMotionVectorBuffer: register(u3);
 RWTexture2D<float> gZDepth: register(u4);
-RWTexture2D<float4> gAlbedoMap: register(u5);
-RWTexture2D<float4> gSpecularMap: register(u6);
-RWTexture2D<float4> gSky: register(u7);
-RWTexture2D<float4> gSpecAlbedo: register(u8);
+RWTexture2D<float4> gSpecularMap: register(u5);
+RWTexture2D<float4> gSky: register(u6);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
+StructuredBuffer<ObjectData> gData: register(t1);
 
 //TODO import NRD.hlsli and define encodings
 float3 _NRD_LinearToYCoCg(float3 color)
@@ -94,9 +93,9 @@ void RayGen()
     float2 jitteredD = ((launchIndex + 0.5F + jitter) / dims) * 2.0F - 1.0F;
     
     RayDesc ray;
-    ray.Origin = mul(gInvView, float4(0, 0, 0, 1));
+    ray.Origin = mul(gInvView, float4(0, 0, 0, 1)).xyz;
     float4 target = mul(gInvProj, float4(jitteredD.x, -jitteredD.y, 1, 1));
-    ray.Direction = mul(gInvView, float4(target.xyz, 0));
+    ray.Direction = mul(gInvView, float4(target.xyz, 0)).xyz;
     ray.TMin = gNearPlane;
     ray.TMax = gFarPlane;
     
@@ -105,7 +104,6 @@ void RayGen()
     payload.specularAndDistance = float4(0, 0, 0, 0);
     payload.normalAndRough = float4(0, 0, 0, 0);
     payload.albedoAndZ = float4(0, 0, 0, -1);
-    payload.specAlbedo = float3(0, 0, 0);
     payload.metalness = 0;
     payload.recursionDepth = 1;
     
@@ -113,18 +111,25 @@ void RayGen()
     
     //non jittered informations
     target = mul(gInvProj, float4(d.x, -d.y, 1, 1));
-    ray.Direction = mul(gInvView, float4(target.xyz, 0));
+    ray.Direction = mul(gInvView, float4(target.xyz, 0)).xyz;
     
     PosPayload pp;
     pp.hPosAndT = float4(0.0, 0.0, 0.0, -1.0);
+    pp.instanceID = -1;
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 3, 0, 3, ray, pp);
-        
+    
     gDepthBuffer[launchIndex] = min(pp.hPosAndT.w / (gFarPlane - gNearPlane), 1.0F);
     
-    //TODO prev world multiplication for moving objects
-    float4 lastPosH = mul(float4(pp.hPosAndT.xyz, 1.0), gViewProjPrev);
-    float2 uv = (lastPosH.xy / lastPosH.w) * float2(0.5, -0.5) + 0.5;
+    float4 lastPosH;
+    if(pp.instanceID < 0) //if missed, use the position as is
+        lastPosH = mul(float4(pp.hPosAndT.xyz, 1.0), gViewProjPrev);
+    else //if hit, multiply the position by its last world matrix
+    {
+        float4 lastPos = mul(float4(pp.hPosAndT.xyz, 1.0), gData[0].toPrevWorld);
+        lastPosH = mul(lastPos, gViewProjPrev);
+    }
     
+    float2 uv = (lastPosH.xy / lastPosH.w) * float2(0.5, -0.5) + 0.5;
     float2 sampleUv = d * float2(0.5, 0.5) + 0.5;
     
     gMotionVectorBuffer[launchIndex] = (uv - sampleUv) * dims;
@@ -137,7 +142,6 @@ void RayGen()
     
     float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, z, float4(3.0, 0.1, 20.0, -25.0));
     gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT, true);
-    gAlbedoMap[launchIndex] = float4(payload.albedoAndZ.rgb, payload.metalness);
     
     hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, z, float4(3.0, 0.1, 20.0, -25.0), payload.normalAndRough.w);
     gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, hitT, true);
@@ -145,5 +149,4 @@ void RayGen()
         gSky[launchIndex] = float4(payload.colorAndDistance.rgb, 1);
     else
         gSky[launchIndex] = 0;
-    gSpecAlbedo[launchIndex] = float4(payload.specAlbedo, 0);
 }

@@ -1,38 +1,37 @@
-#include "PostDenoise.h"
+#include "ColorAdjust.h"
 
 namespace RT
 {
-	PostDenoise::PostDenoise(ID3D12Device* device, std::wstring shader)
+	ColorAdjust::ColorAdjust(ID3D12Device* device, std::wstring shader)
 	{
+		mCB = std::make_unique<UploadBuffer<Data>>(device, 1, true);
+
 		loadShader(device, shader);
 		buildRootSignature(device);
 		buildPSO(device);
 	}
 
-	void PostDenoise::loadShader(ID3D12Device* device, std::wstring fileName)
+	void ColorAdjust::loadShader(ID3D12Device* device, std::wstring fileName)
 	{
 		mShader = LoadBinary(fileName);
 
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		desc.NumDescriptors = 6;
+		desc.NumDescriptors = 1;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&mHeap)));
 	}
 
-	void PostDenoise::buildRootSignature(ID3D12Device* device)
+	void ColorAdjust::buildRootSignature(ID3D12Device* device)
 	{
-		CD3DX12_DESCRIPTOR_RANGE inputRange;
-		inputRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 0, 0, 0);
 		CD3DX12_DESCRIPTOR_RANGE outputRange;
-		outputRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, 3);
+		outputRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, 0);
 
-		CD3DX12_ROOT_PARAMETER parameter;
+		CD3DX12_ROOT_PARAMETER parameters[2];
+		parameters[0].InitAsDescriptorTable(1, &outputRange, D3D12_SHADER_VISIBILITY_ALL);
+		parameters[1].InitAsConstantBufferView(0);
 
-		D3D12_DESCRIPTOR_RANGE ranges[2] = { inputRange, outputRange };
-		parameter.InitAsDescriptorTable(2, ranges, D3D12_SHADER_VISIBILITY_ALL);
-
-		CD3DX12_ROOT_SIGNATURE_DESC bloomRootSigDesc(1, &parameter);
+		CD3DX12_ROOT_SIGNATURE_DESC bloomRootSigDesc(2, parameters);
 
 		Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
 		Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -45,7 +44,7 @@ namespace RT
 		ThrowIfFailed(device->CreateRootSignature(0, serializedRootSig->GetBufferPointer(), serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&mRootSignature)));
 	}
 
-	void PostDenoise::buildPSO(ID3D12Device* device)
+	void ColorAdjust::buildPSO(ID3D12Device* device)
 	{
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
 		desc.pRootSignature = mRootSignature.Get();
@@ -56,7 +55,7 @@ namespace RT
 		ThrowIfFailed(device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&mPSO)));
 	}
 
-	void PostDenoise::dispatch(ID3D12GraphicsCommandList* cmdList, UINT32 width, UINT32 height)
+	void ColorAdjust::dispatch(ID3D12GraphicsCommandList* cmdList, UINT32 width, UINT32 height)
 	{
 		ID3D12DescriptorHeap* heaps[] = { mHeap.Get() };
 		cmdList->SetDescriptorHeaps(1, heaps);
@@ -64,9 +63,10 @@ namespace RT
 
 		cmdList->SetPipelineState(mPSO.Get());
 		cmdList->SetComputeRootDescriptorTable(0, mHeap->GetGPUDescriptorHandleForHeapStart());
+		cmdList->SetComputeRootConstantBufferView(1, mCB->resource()->GetGPUVirtualAddress());
 
-		UINT w = (UINT) ceilf(width / 16.0F);
-		UINT h = (UINT) ceilf(height / 16.0F);
+		UINT w = (UINT) ceilf(width / 32.0F);
+		UINT h = (UINT) ceilf(height / 32.0F);
 		cmdList->Dispatch(w, h, 1);
 	}
 }

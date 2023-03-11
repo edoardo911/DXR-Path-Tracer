@@ -47,6 +47,9 @@ namespace RT
 		UINT matOffset = 0;
 		UINT objCBOffset = 0;
 
+		//to calculate previous world matrix: create a function to move instances and before calculating the new
+		//world matrix save the current state into the previous one
+
 		InstanceData* buffers = nullptr;
 		ObjectType type = OBJECT_TYPE_NORMAL;
 	};

@@ -56,6 +56,7 @@ namespace RT
 		INT32 diffuseIndex;
 		INT32 normalIndex;
 		UINT32 materialIndex;
+		UINT32 unused;
 	};
 
 	#define FLAG_MIRROR		0x00000001

@@ -10,7 +10,6 @@ struct HitInfo
     float4 specularAndDistance;
     float4 normalAndRough;
     float4 albedoAndZ;
-    float3 specAlbedo;
     float metalness;
     uint recursionDepth;
 };
@@ -30,6 +29,7 @@ struct AOHitInfo
 struct PosPayload
 {
     float4 hPosAndT;
+    int instanceID;
 };
 
 //other structs
@@ -73,6 +73,16 @@ struct Material
     float metallic;
     float refractionIndex;
     int flags;
+};
+
+struct ObjectData
+{
+    float4x4 world;
+    float4x4 toPrevWorld;
+    int diffuseIndex;
+    int normalIndex;
+    uint matIndex;
+    int unused;
 };
 
 float CalcAttenuation(float d, float falloffStart, float falloffEnd)

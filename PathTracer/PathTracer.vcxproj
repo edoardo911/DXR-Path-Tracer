@@ -150,6 +150,7 @@
     <ClCompile Include="src\raytracing\ShaderBindingTableGenerator.cpp" />
     <ClCompile Include="src\raytracing\TopLevelASGenerator.cpp" />
     <ClCompile Include="src\rendering\Camera.cpp" />
+    <ClCompile Include="src\rendering\ColorAdjust.cpp" />
     <ClCompile Include="src\rendering\FrameResource.cpp" />
     <ClCompile Include="src\rendering\PostDenoise.cpp" />
     <ClCompile Include="src\rendering\Temporal.cpp" />
@@ -171,6 +172,7 @@
     <ClInclude Include="src\raytracing\ShaderBindingTableGenerator.h" />
     <ClInclude Include="src\raytracing\TopLevelASGenerator.h" />
     <ClInclude Include="src\rendering\Camera.h" />
+    <ClInclude Include="src\rendering\ColorAdjust.h" />
     <ClInclude Include="src\rendering\FrameResource.h" />
     <ClInclude Include="src\rendering\PostDenoise.h" />
     <ClInclude Include="src\rendering\Temporal.h" />
@@ -186,6 +188,14 @@
     <ClInclude Include="src\utils\UploadBuffer.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="res\shaders\color_adjust.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+    </FxCompile>
     <FxCompile Include="res\shaders\post_denoise.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>

@@ -10,6 +10,7 @@
 
 #include "rendering/FrameResource.h"
 #include "rendering/PostDenoise.h"
+#include "rendering/ColorAdjust.h"
 #include "rendering/Temporal.h"
 #include "rendering/Camera.h"
 
@@ -71,7 +72,6 @@ private:
 	void createHitSignature(ID3D12RootSignature** pRootSig);
 	void createAOHitSignature(ID3D12RootSignature** pRootSig);
 	void createShadowHitSignature(ID3D12RootSignature** pRootSig);
-	void createPosHitSignature(ID3D12RootSignature** pRootSig);
 	void createRaytracingPipeline();
 	void createShaderBindingTable();
 
@@ -121,6 +121,7 @@ private:
 	nrd::CommonSettings nrdSettings = {};
 
 	std::unique_ptr<PostDenoise> postDenoise;
+	std::unique_ptr<ColorAdjust> colorAdjust;
 	std::unique_ptr<Temporal> temporal;
 };
 
@@ -187,7 +188,16 @@ bool App::initialize()
 		return false;
 
 	postDenoise = std::make_unique<PostDenoise>(md3dDevice.Get(), L"res/shaders/bin/post_denoise.cso");
+	colorAdjust = std::make_unique<ColorAdjust>(md3dDevice.Get(), L"res/shaders/bin/color_adjust.cso");
 	temporal = std::make_unique<Temporal>(md3dDevice.Get(), L"res/shaders/bin/temporal.cso");
+
+	ColorAdjust::Data data;
+	data.brightness = 0.0F;
+	data.contrast = 1.0F;
+	data.exposure = 1.0F;
+	data.saturation = 1.0F;
+	data.gamma = 2.2F;
+	colorAdjust->setData(data);
 
 	ThrowIfFailed(mDirectCmdListAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
@@ -333,7 +343,7 @@ void App::buildMaterials()
 	redBall->DiffuseAlbedo = { 1.0F, 0.0F, 0.0F, 0.2F };
 	redBall->matCBIndex = 1;
 	redBall->Roughness = 0.05F;
-	redBall->refractionIndex = 1.0F;
+	redBall->refractionIndex = 0.9F;
 	mMaterials.push_back(std::move(redBall));
 
 	auto wall = std::make_unique<Material>();
@@ -343,7 +353,7 @@ void App::buildMaterials()
 	mMaterials.push_back(std::move(wall));
 
 	auto metallicBall = std::make_unique<Material>();
-	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.1F };
+	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.3F };
 	metallicBall->metallic = 0.8F;
 	metallicBall->matCBIndex = 3;
 	metallicBall->Roughness = 0.3F;
@@ -392,6 +402,7 @@ void App::createTopLevelAS(const std::vector<std::tuple<Microsoft::WRL::ComPtr<I
 	{
 		const auto& [res, world, type] = instances[i];
 		mTopLevelASGenerator.AddInstance(res.Get(), world, static_cast<UINT>(i), static_cast<UINT>(i * 4), 0xFF);
+		mRTInstances[i]->objCBOffset = (UINT) i;
 	}
 
 	UINT64 scratchSize, resultSize, instanceDescsSize;
@@ -423,19 +434,19 @@ void App::createRayGenSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddHeapRangesParameter({ { 0, 9, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 } });
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
+	rsc.AddHeapRangesParameter({ { 0, 7, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 7 } });
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
 void App::createMissSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 13 } });
+	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 11 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
 
-//TODO fix common signatures
 void App::createAOMissSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
@@ -446,11 +457,11 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0, 1);
-	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10 } });
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1, 1);
+	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 7 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -464,14 +475,8 @@ void App::createAOHitSignature(ID3D12RootSignature** pRootSig)
 void App::createShadowHitSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
-	rsc.Generate(md3dDevice.Get(), true, pRootSig);
-}
-
-void App::createPosHitSignature(ID3D12RootSignature** pRootSig)
-{
-	nv_helpers_dx12::RootSignatureGenerator rsc;
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
@@ -500,7 +505,7 @@ void App::createRaytracingPipeline()
 	createHitSignature(&mSignatures["closestHit"]);
 	createAOHitSignature(&mSignatures["aoClosestHit"]);
 	createShadowHitSignature(&mSignatures["shadowClosestHit"]);
-	createPosHitSignature(&mSignatures["posClosestHit"]);
+	createAOHitSignature(&mSignatures["posClosestHit"]);
 
 	pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
 	pipeline.AddHitGroup(L"AOHitGroup", L"AOClosestHit");
@@ -515,7 +520,7 @@ void App::createRaytracingPipeline()
 	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["posClosestHit"].Get(), { L"PosHitGroup" });
 
-	pipeline.SetMaxPayloadSize(20 * sizeof(float) + 1 * sizeof(UINT));
+	pipeline.SetMaxPayloadSize(17 * sizeof(float) + 1 * sizeof(UINT));
 	pipeline.SetMaxAttributeSize(2 * sizeof(float));
 	pipeline.SetMaxRecursionDepth(4);
 
@@ -528,33 +533,33 @@ void App::createShaderBindingTable()
 	D3D12_GPU_DESCRIPTOR_HANDLE heapHandle = mHeap->GetGPUDescriptorHandleForHeapStart();
 
 	UINT64* heapPointer = reinterpret_cast<UINT64*>(heapHandle.ptr);
-	UINT objCBSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
 	for(int j = 0; j < NUM_FRAME_RESOURCES; ++j)
 	{
 		mSBTHelper.Reset();
-		mSBTHelper.AddRayGenerationProgram(L"RayGen", { (void*) mFrameResources[j]->passCB->resource()->GetGPUVirtualAddress(), heapPointer });
-		mSBTHelper.AddMissProgram(L"Miss", {});
+		mSBTHelper.AddRayGenerationProgram(L"RayGen", {
+			(void*) mFrameResources[j]->passCB->resource()->GetGPUVirtualAddress(),
+			(void*) mFrameResources[j]->objCB->resource()->GetGPUVirtualAddress(),
+			heapPointer
+		});
+		mSBTHelper.AddMissProgram(L"Miss", { heapPointer });
 		mSBTHelper.AddMissProgram(L"ShadowMiss", {});
 		mSBTHelper.AddMissProgram(L"AOMiss", {});
 		mSBTHelper.AddMissProgram(L"PosMiss", {});
 
 		for(auto& i:mRTInstances)
 		{
-			auto objCB = mFrameResources[j]->objCB->resource();
-			D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCB->GetGPUVirtualAddress() + i->objCBOffset * objCBSize;
-
 			mSBTHelper.AddHitGroup(L"HitGroup", {
 									(void*) mFrameResources[j]->passCB->resource()->GetGPUVirtualAddress(),
-									(void*) objCBAddress,
-									(void*) (i->buffers->vertexBuffer->GetGPUVirtualAddress()),
-									(void*) (i->buffers->indexBuffer->GetGPUVirtualAddress()),
-									(void*) (mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress()),
+									(void*) i->buffers->vertexBuffer->GetGPUVirtualAddress(),
+									(void*) i->buffers->indexBuffer->GetGPUVirtualAddress(),
+									(void*) mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress(),
+									(void*) mFrameResources[j]->objCB->resource()->GetGPUVirtualAddress(),
 									heapPointer
 								   });
 			mSBTHelper.AddHitGroup(L"ShadowHitGroup", {
-									(void*) objCBAddress,
-									(void*) (mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress())
+									(void*) mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress(),
+									(void*) mFrameResources[j]->objCB->resource()->GetGPUVirtualAddress()
 								   });
 			mSBTHelper.AddHitGroup(L"AOHitGroup", {});
 			mSBTHelper.AddHitGroup(L"PosHitGroup", {});
@@ -590,14 +595,14 @@ void App::loadTextures()
 void App::buildDescriptorHeap()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = 14;
+	heapDesc.NumDescriptors = 12;
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
 	allocateOutputResources();
-	hDescriptor.Offset(9, mCbvSrvUavDescriptorSize);
+	hDescriptor.Offset(7, mCbvSrvUavDescriptorSize);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -657,13 +662,9 @@ void App::allocateOutputResources()
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mZDepth.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateUnorderedAccessView(mAlbedoMap.Get(), nullptr, &uavDesc, hDescriptor);
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mSpecular.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mSky.Get(), nullptr, &uavDesc, hDescriptor);
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateUnorderedAccessView(mSpecAlbedo.Get(), nullptr, &uavDesc, hDescriptor);
 
 	//post denoising heap
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -677,15 +678,15 @@ void App::allocateOutputResources()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE pdHandle(postDenoise->getHeapStart());
 	md3dDevice->CreateShaderResourceView(mDenoisedTexture.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateShaderResourceView(mAlbedoMap.Get(), &srvDesc, pdHandle);
-	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateShaderResourceView(mDenoisedSpecular.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateShaderResourceView(mSky.Get(), &srvDesc, pdHandle);
 	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateShaderResourceView(mSpecAlbedo.Get(), &srvDesc, pdHandle);
-	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mDenoisedComposite.Get(), nullptr, &uavDesc, pdHandle);
+
+	//color adjust heap
+	CD3DX12_CPU_DESCRIPTOR_HANDLE caHandle(colorAdjust->getHeapStart());
+	md3dDevice->CreateUnorderedAccessView(mDenoisedComposite.Get(), nullptr, &uavDesc, caHandle);
 }
 
 void App::buildFrameResources()
@@ -766,6 +767,7 @@ void App::draw()
 	denoise(nrdSettings, mOutputResource.Get());
 	
 	postDenoise->dispatch(mCommandList.Get(), settings.dlss ? settings.dlssWidth : settings.width, settings.dlss ? settings.dlssHeight : settings.height);
+	colorAdjust->dispatch(mCommandList.Get(), settings.dlss ? settings.dlssWidth : settings.width, settings.dlss ? settings.dlssHeight : settings.height);
 
 	if(settings.dlss)
 		DLSS(mDenoisedComposite.Get(), jitter.x, jitter.y);
@@ -864,7 +866,7 @@ void App::updateObjCBs()
 			mCurrFrameResource->objCB->copyData(e->objCBOffset, objCB);
 			e->numFramesDirty--;
 
-			e->worldPrev = e->world;
+			//e->worldPrev = e->world;
 		}
 	}
 }
@@ -928,14 +930,9 @@ void App::onResize()
 
 	if(mOutputResource)
 	{
-		if(settings.dlss)
-			resetDLSSFeature();
-
 		buildOutputResource();
 		allocateOutputResources();
 	}
-
-	//TODO denoiser resizing
 }
 
 void App::keyboardInput()

@@ -118,9 +118,8 @@ namespace RT
 		Microsoft::WRL::ComPtr<ID3D12Resource> mSky;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mZDepth;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mSpecular;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mSpecAlbedo;
 
-		NVSDK_NGX_Handle* feature = nullptr;
+		NVSDK_NGX_Handle* mFeature = nullptr;
 		NVSDK_NGX_Parameter* params = nullptr;
 
 		HINSTANCE mWindowInst = nullptr;

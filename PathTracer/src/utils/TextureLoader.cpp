@@ -1475,12 +1475,12 @@ static HRESULT CreateTextureFromDDS(_In_ ID3D11Device* d3dDevice,
     bool autogen = false;
     if(mipCount == 1 && d3dContext != 0 && textureView != 0) // Must have context and shader-view to auto generate mipmaps
     {
-        // See if format is supported for auto-gen mipmaps (varies by feature level)
+        // See if format is supported for auto-gen mipmaps (varies by mFeature level)
         UINT fmtSupport = 0;
         hr = d3dDevice->CheckFormatSupport(format, &fmtSupport);
         if(SUCCEEDED(hr) && (fmtSupport & D3D11_FORMAT_SUPPORT_MIP_AUTOGEN))
         {
-            // 10level9 feature levels do not support auto-gen mipgen for volume textures
+            // 10level9 mFeature levels do not support auto-gen mipgen for volume textures
             if((resDim != D3D11_RESOURCE_DIMENSION_TEXTURE3D)
                || (d3dDevice->GetFeatureLevel() >= D3D_FEATURE_LEVEL_10_0))
             {
@@ -1594,7 +1594,7 @@ static HRESULT CreateTextureFromDDS(_In_ ID3D11Device* d3dDevice,
 
             if(FAILED(hr) && !maxsize && (mipCount > 1))
             {
-                // Retry with a maxsize determined by feature level
+                // Retry with a maxsize determined by mFeature level
                 switch(d3dDevice->GetFeatureLevel())
                 {
                 case D3D_FEATURE_LEVEL_9_1:

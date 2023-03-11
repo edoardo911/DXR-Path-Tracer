@@ -37,7 +37,7 @@ namespace RT
 		bool fullscreen = false;
 		bool dlssSupported = false;
 
-		DXGI_FORMAT backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+		DXGI_FORMAT backBufferFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
 		std::wstring name = L"Path Tracing";
 	protected:
