@@ -1,5 +1,10 @@
 #include "common.hlsli"
 
+#define NRD_NORMAL_ENCODING 2
+#define NRD_ROUGHNESS_ENCODING 1
+#define NRD_HEADER_ONLY
+#include "include/NRD.hlsli"
+
 cbuffer cbPass: register(b0)
 {
     float4x4 gView;
@@ -22,67 +27,10 @@ RWTexture2D<float2> gMotionVectorBuffer: register(u3);
 RWTexture2D<float> gZDepth: register(u4);
 RWTexture2D<float4> gSpecularMap: register(u5);
 RWTexture2D<float4> gSky: register(u6);
+RWTexture2D<float4> gAlbedoAndMetalness: register(u7);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 StructuredBuffer<ObjectData> gData: register(t1);
-
-//TODO import NRD.hlsli and define encodings
-float3 _NRD_LinearToYCoCg(float3 color)
-{
-    float Y = dot(color, float3(0.25, 0.5, 0.25));
-    float Co = dot(color, float3(0.5, 0.0, -0.5));
-    float Cg = dot(color, float3(-0.25, 0.5, -0.25));
-
-    return float3(Y, Co, Cg);
-}
-
-float4 REBLUR_FrontEnd_PackRadianceAndNormHitDist(float3 radiance, float normHitDist, bool sanitize = true)
-{
-    if(sanitize)
-    {
-        radiance = any(isnan(radiance) | isinf(radiance)) ? 0 : clamp(radiance, 0, 65504.0);
-        normHitDist = (isnan(normHitDist) | isinf(normHitDist)) ? 0 : saturate(normHitDist);
-    }
-
-    // "0" is reserved to mark "no data" samples, skipped due to probabilistic sampling
-    if(normHitDist != 0)
-        normHitDist = max(normHitDist, 1e-7);
-
-    radiance = _NRD_LinearToYCoCg(radiance);
-
-    return float4(radiance, normHitDist);
-}
-
-float _REBLUR_GetHitDistanceNormalization(float viewZ, float4 hitDistParams, float roughness = 1.0)
-{
-    return (hitDistParams.x + abs(viewZ) * hitDistParams.y) * lerp(1.0, hitDistParams.z, saturate(exp2(hitDistParams.w * roughness * roughness)));
-}
-
-float REBLUR_FrontEnd_GetNormHitDist(float hitDist, float viewZ, float4 hitDistParams, float roughness = 1.0)
-{
-    float f = _REBLUR_GetHitDistanceNormalization(viewZ, hitDistParams, roughness);
-
-    return saturate(hitDist / f);
-}
-
-float2 _NRD_EncodeUnitVector(float3 v, const bool bSigned = false)
-{
-    v /= dot(abs(v), 1.0);
-
-    float2 octWrap = (1.0 - abs(v.yx)) * (step(0.0, v.xy) * 2.0 - 1.0);
-    v.xy = v.z >= 0.0 ? v.xy : octWrap;
-
-    return bSigned ? v.xy : v.xy * 0.5 + 0.5;
-}
-
-float4 NRD_FrontEnd_PackNormalAndRoughness(float3 N, float roughness, uint materialID = 0)
-{
-    float4 p;
-    p.xy = _NRD_EncodeUnitVector(N, false);
-    p.z = roughness;
-    p.w = saturate(materialID / 3.0);
-    return p;
-}
 
 [shader("raygeneration")]
 void RayGen()
@@ -90,7 +38,7 @@ void RayGen()
     uint2 launchIndex = DispatchRaysIndex().xy;
     float2 dims = float2(DispatchRaysDimensions().xy);
     float2 d = ((launchIndex + 0.5F) / dims) * 2.0F - 1.0F;
-    float2 jitteredD = ((launchIndex + 0.5F + jitter) / dims) * 2.0F - 1.0F;
+    float2 jitteredD = ((launchIndex + jitter + 0.5F) / dims) * 2.0F - 1.0F;
     
     RayDesc ray;
     ray.Origin = mul(gInvView, float4(0, 0, 0, 1)).xyz;
@@ -104,7 +52,7 @@ void RayGen()
     payload.specularAndDistance = float4(0, 0, 0, 0);
     payload.normalAndRough = float4(0, 0, 0, 0);
     payload.albedoAndZ = float4(0, 0, 0, -1);
-    payload.metalness = 0;
+    payload.virtualZ = -1;
     payload.recursionDepth = 1;
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
@@ -125,28 +73,31 @@ void RayGen()
         lastPosH = mul(float4(pp.hPosAndT.xyz, 1.0), gViewProjPrev);
     else //if hit, multiply the position by its last world matrix
     {
-        float4 lastPos = mul(float4(pp.hPosAndT.xyz, 1.0), gData[0].toPrevWorld);
-        lastPosH = mul(lastPos, gViewProjPrev);
+        float3 lastPos = mul(float4(pp.hPosAndT.xyz, 1.0), gData[pp.instanceID].toPrevWorld).xyz;
+        lastPosH = mul(float4(lastPos, 1.0), gViewProjPrev);
     }
     
     float2 uv = (lastPosH.xy / lastPosH.w) * float2(0.5, -0.5) + 0.5;
-    float2 sampleUv = d * float2(0.5, 0.5) + 0.5;
+    float2 sampleUv = d * 0.5 + 0.5;
     
     gMotionVectorBuffer[launchIndex] = (uv - sampleUv) * dims;
     gNormalAndRoughness[launchIndex] = NRD_FrontEnd_PackNormalAndRoughness(payload.normalAndRough.xyz, payload.normalAndRough.w);
     
-    float z = payload.albedoAndZ.w;
+    float z = payload.albedoAndZ.w, virtualZ = payload.virtualZ;
     if(z < 0)
         z = gFarPlane - gNearPlane;
+    if(virtualZ < 0)
+        virtualZ = gFarPlane - gNearPlane;
     gZDepth[launchIndex] = z;
     
     float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, z, float4(3.0, 0.1, 20.0, -25.0));
     gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT, true);
     
-    hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, z, float4(3.0, 0.1, 20.0, -25.0), payload.normalAndRough.w);
+    hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, virtualZ, float4(3.0, 0.1, 20.0, -25.0), payload.normalAndRough.w);
     gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, hitT, true);
     if(payload.albedoAndZ.w < 0)
         gSky[launchIndex] = float4(payload.colorAndDistance.rgb, 1);
     else
         gSky[launchIndex] = 0;
+    gAlbedoAndMetalness[launchIndex] = float4(payload.albedoAndZ.rgb, 1);
 }

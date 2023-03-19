@@ -26,9 +26,9 @@ void main(uint3 threadID: SV_DispatchThreadID)
 	float4 baseColor = image[threadID.xy] * exposure;
 	float3 bcColor = contrast * (baseColor.rgb - 0.5F) + 0.5F + brightness;
 
-	float grayscale = dot(bcColor, float3(0.299F, 0.587F, 0.144F));
+	float luma = dot(bcColor, float3(0.299F, 0.587F, 0.144F));
 
-	float3 saturatedColor = lerp(grayscale, bcColor, saturation);
+	float3 saturatedColor = lerp(luma, bcColor, saturation);
 	float3 tonemapped = uncharted2_tonemapping(saturatedColor * 3.5F);
 	float3 whiteScale = 1.0F / uncharted2_tonemapping(11.2F);
 	tonemapped *= whiteScale;
@@ -38,5 +38,5 @@ void main(uint3 threadID: SV_DispatchThreadID)
 		finalColor = tonemapped;
 	else
 		finalColor = pow(tonemapped, gamma);
-	image[threadID.xy] = float4(finalColor, 1.0F);
+    image[threadID.xy] = float4(pow(baseColor, gamma).rgb, 1.0F);
 }

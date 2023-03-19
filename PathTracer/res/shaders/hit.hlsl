@@ -40,18 +40,8 @@ cbuffer cbPass: register(b0)
 
 #define _USE_MIPMAPS
 
-#ifdef _USE_MIPMAPS
-    #define _ANISOTROPIC
-#endif
-
-#ifdef _ANISOTROPIC
-    #define MIPMAP_FUNC min
-#else
-    #define MIPMAP_FUNC max
-#endif
-
 //ray differentials TODO move in path_tracing_utils.hlsli
-float computeTextureLOD(uint2 size, float3 d, float t, out float2 anisotropicDir)
+float computeTextureLOD(uint2 size, float3 d, float t)
 {
 #ifdef _USE_MIPMAPS
     uint vertId = 3 * PrimitiveIndex();
@@ -90,15 +80,8 @@ float computeTextureLOD(uint2 size, float3 d, float t, out float2 anisotropicDir
     float dtdx = size.y * (dudx * g1.y + dvdy * g2.y);
     float dtdy = size.y * (dudy * g1.y + dvdy * g2.y);
     
-#ifdef _ANISOTROPIC
-    if(sqrt(dsdx * dsdx + dtdx * dtdx) > sqrt(dsdy * dsdy + dtdy * dtdy))
-        anisotropicDir = float2(dsdx, dtdx);
-    else
-        anisotropicDir = float2(dsdy, dtdy);
-#endif
-    
-    float p = MIPMAP_FUNC(sqrt(dsdx * dsdx + dtdx * dtdx), sqrt(dsdy * dsdy + dtdy * dtdy));
-    return log2(ceil(p)) + gLODOffset - 1;
+    float p = max(sqrt(dsdx * dsdx + dtdx * dtdx), sqrt(dsdy * dsdy + dtdy * dtdy));
+    return log2(ceil(p)) + gLODOffset;
 #else
     return 0;
 #endif
@@ -150,36 +133,25 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     //diffuse and normal sampling
     float4 mapColor = float4(1, 1, 1, 1);
-    
-    float2 anisotropicDir = 0;
-    if (objectData.diffuseIndex >= 0)
+    if(objectData.diffuseIndex >= 0)
     {
         uint w, h, l;
         gDiffuseMap[objectData.diffuseIndex].GetDimensions(0, w, h, l);
-        float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent(), anisotropicDir);
-    #ifdef _ANISOTROPIC
-        float2 offset = anisotropicDir * (nextRand(seed) * 2.0F - 1.0F) * float2(1.0F / w, 1.0F / h);
-    #else
-        float2 offset = 0.0F;
-    #endif
-        mapColor = gDiffuseMap[objectData.diffuseIndex].SampleLevel(gsamTrilinearWrap, uvs + offset, LOD);
+        float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent());
+        mapColor = gDiffuseMap[objectData.diffuseIndex].SampleLevel(gsamTrilinearWrap, uvs, 0);
     }
-    if (objectData.normalIndex >= 0)
+    if(false) //objectData.normalIndex >= 0
     {
         uint w, h, l;
         gNormalMap[objectData.normalIndex].GetDimensions(0, w, h, l);
-        float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent(), anisotropicDir);
-    #ifdef _ANISOTROPIC
-        float2 offset = anisotropicDir * (nextRand(seed) * 2.0F - 1.0F) * float2(1.0F / w, 1.0F / h);
-    #else
-        float2 offset = 0.0F;
-    #endif
-        float3 normalSample = normalize(gNormalMap[objectData.normalIndex].SampleLevel(gsamTrilinearWrap, uvs + offset, LOD).rgb);
+        float LOD = computeTextureLOD(uint2(w, h), normRayDir, max(payload.colorAndDistance.a, 0.0F) + RayTCurrent());
+        float3 normalSample = normalize(gNormalMap[objectData.normalIndex].SampleLevel(gsamTrilinearWrap, uvs, LOD).rgb);
         norm = normalSampleToWorldSpace(normalSample, norm, tangent);
     }
     
     float4 diffuseAlbedo = material.diffuseAlbedo;
-    diffuseAlbedo *= mapColor;
+    if(payload.recursionDepth > 1)
+        diffuseAlbedo *= mapColor;
     
     //indirect back propagation
     if(payload.colorAndDistance.a < 0.0F)
@@ -359,12 +331,12 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float4 directLight = ComputeLighting(gLights, mat, worldOrigin, norm, -WorldRayDirection(), shadowFactor, specAlbedo);
     
     hitColor.rgb += diffuseAlbedo.rgb * directLight.rgb;
-    if(shadowFactor.x == 1.0)
-        payload.specularAndDistance.rgb = specAlbedo;
-    hitColor.rgb += indirectLight;
-    payload.metalness = material.metallic;
+    //if(shadowFactor.x == 1.0)
+    //    payload.specularAndDistance.rgb = specAlbedo;
+    hitColor.rgb += indirectLight; //TODO * diffuseAlbedo?
     
     //reflections
+    float metallic = 0;
     float rayNormDot = dot(norm, -WorldRayDirection());
     if(material.metallic > 0.0 && payload.recursionDepth < MAX_RECURSION_DEPTH)
     {
@@ -377,7 +349,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         HitInfo reflPayload;
         reflPayload.colorAndDistance = float4(1, 1, 1, RayTCurrent());
         reflPayload.recursionDepth = payload.recursionDepth + 1;
-        reflPayload.albedoAndZ = float4(0, 0, 0, 0);
+        reflPayload.virtualZ = -1;
+        reflPayload.albedoAndZ.xyz = worldOrigin;
+        reflPayload.specularAndDistance.xyz = WorldRayDirection();
         
         RayDesc reflRay;
         reflRay.Origin = worldOrigin;
@@ -396,10 +370,14 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         else //miss
             distanceFactor = min(shininess * 3, 1.0F);
         
-        payload.metalness = fresnelFactor * material.metallic * distanceFactor;
-        payload.specularAndDistance.rgb += reflPayload.colorAndDistance.rgb * payload.metalness;
+        metallic = fresnelFactor * material.metallic * distanceFactor;
+        payload.specularAndDistance.rgb += reflPayload.colorAndDistance.rgb * metallic;
         payload.specularAndDistance.a = reflPayload.colorAndDistance.a;
+        if(payload.recursionDepth == 2)
+            payload.virtualZ = reflPayload.virtualZ;
     }
+    
+    //TODO rename indirect light payload
     
     //refraction
     if(material.diffuseAlbedo.a < 1.0 && payload.recursionDepth < MAX_RECURSION_DEPTH)
@@ -414,7 +392,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         HitInfo refrPayload;
         refrPayload.colorAndDistance = float4(1, 1, 1, RayTCurrent());
         refrPayload.recursionDepth = payload.recursionDepth + 1;
-        refrPayload.albedoAndZ = float4(0, 0, 0, 0);
+        refrPayload.virtualZ = -1;
+        refrPayload.albedoAndZ.xyz = worldOrigin;
+        refrPayload.specularAndDistance.xyz = WorldRayDirection();
 
         RayDesc refrRay;
         refrRay.Origin = worldOrigin;
@@ -430,22 +410,31 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         if(refrPayload.colorAndDistance.a < 1e7) //hit
         {
             float distanceFactor = 1.0 - saturate(refrPayload.colorAndDistance.a / (50 * visibility));
-            payload.metalness = fresnelFactor * visibility * distanceFactor;
-            payload.specularAndDistance.rgb += refrPayload.colorAndDistance.rgb * payload.metalness;
+            metallic = fresnelFactor * visibility * distanceFactor;
+            payload.specularAndDistance.rgb += refrPayload.colorAndDistance.rgb * metallic;
         }
         else //miss
         {
-            payload.metalness = fresnelFactor * visibility;
-            payload.specularAndDistance.rgb += refrPayload.colorAndDistance.rgb * payload.metalness;
+            metallic = fresnelFactor * visibility;
+            payload.specularAndDistance.rgb += refrPayload.colorAndDistance.rgb * metallic;
         }
+        
         payload.specularAndDistance.a = refrPayload.colorAndDistance.a;
+        if(payload.recursionDepth == 2)
+            payload.virtualZ = refrPayload.virtualZ;
     }
     
-    if(payload.recursionDepth != 1)
-        hitColor.a = RayTCurrent();
+    if(payload.recursionDepth > 1)
+    {
+        float3 virtualPos = payload.albedoAndZ.xyz + RayTCurrent() * payload.specularAndDistance.xyz;
+        payload.virtualZ = mul(float4(virtualPos, 1.0), gView).z;
+    }
+    
+    if(payload.recursionDepth == 1)
+        hitColor.rgb *= 1.0 - metallic;
     else
-        hitColor.rgb *= 1.0 - payload.metalness;
+        hitColor.a = RayTCurrent();
     payload.colorAndDistance = hitColor;
     payload.normalAndRough = float4(norm, material.roughness);
-    payload.albedoAndZ = float4(diffuseAlbedo.rgb, mul(float4(worldOrigin, 1.0), gView).z);
+    payload.albedoAndZ = float4(mapColor.rgb, mul(float4(worldOrigin, 1.0), gView).z);
 }

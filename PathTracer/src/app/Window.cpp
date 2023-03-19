@@ -245,9 +245,9 @@ namespace RT
 			featureDesc.Feature.InTargetWidth = settings.width;
 			featureDesc.Feature.InTargetHeight = settings.height;
 			featureDesc.Feature.InPerfQualityValue = val;
-			featureDesc.InFeatureCreateFlags = (settings.backBufferFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ? NVSDK_NGX_DLSS_Feature_Flags_IsHDR : NVSDK_NGX_DLSS_Feature_Flags_None)
-												| NVSDK_NGX_DLSS_Feature_Flags_AutoExposure
-												| NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
+			featureDesc.InFeatureCreateFlags = NVSDK_NGX_DLSS_Feature_Flags_AutoExposure
+											 | NVSDK_NGX_DLSS_Feature_Flags_MVLowRes
+											 | NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
 		
 			ThrowIfFailed(mDirectCmdListAlloc->Reset());
 			ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
@@ -285,6 +285,10 @@ namespace RT
 
 		if(nrd::CreateDenoiser(desc, mDenoiser) != nrd::Result::SUCCESS)
 			return false;
+		
+		nrd::ReblurSettings s = {};
+		s.hitDistanceReconstructionMode = nrd::HitDistanceReconstructionMode::AREA_3X3;
+		nrd::SetMethodSettings(*mDenoiser, nrd::Method::REBLUR_DIFFUSE_SPECULAR, &s);
 
 		createDenoiserPipelines();
 		createDenoiserResources();
@@ -404,7 +408,7 @@ namespace RT
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mDenoiserSamplerHeap)));
 
-		heapDesc.NumDescriptors = 30;
+		heapDesc.NumDescriptors = 25;
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		for(UINT32 i = 0; i < desc.descriptorPoolDesc.setsMaxNum; ++i)
 			ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mDenoiserResourcesHeaps[i])));
@@ -678,12 +682,6 @@ namespace RT
 
 	void Window::DLSS(ID3D12Resource* outputResource, float jitterX, float jitterY, bool reset)
 	{
-		if(settings.dlss == DLSS_PERFORMANCE)
-		{
-			jitterX *= 0.5F;
-			jitterY *= 0.5F;
-		}
-
 		NVSDK_NGX_D3D12_DLSS_Eval_Params evalDesc = {};
 		evalDesc.Feature.pInColor = outputResource;
 		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
@@ -710,9 +708,6 @@ namespace RT
 
 		int constantBufferViewSize = CalcConstantBufferByteSize(desc.constantBufferMaxDataSize);
 
-		nrd::ReblurSettings s = {};
-		nrd::SetMethodSettings(*mDenoiser, nrd::Method::REBLUR_DIFFUSE_SPECULAR, &s);
-
 		for(UINT32 i = 0; i < num; ++i)
 		{
 			const nrd::DispatchDesc d = dd[i];
@@ -722,7 +717,7 @@ namespace RT
 			for(UINT32 j = 0; j < d.resourcesNum; ++j)
 			{
 				DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-				ID3D12Resource* tex = mDenoiserResources[0].Get();
+				ID3D12Resource* tex = nullptr;
 				
 				const nrd::ResourceDesc res = d.resources[j];
 				if(res.type == nrd::ResourceType::PERMANENT_POOL)
@@ -781,7 +776,7 @@ namespace RT
 					format = settings.backBufferFormat;
 				}
 				else
-					::OutputDebugString(L"Error");
+					throw std::exception("Unhandled reblur image");
 
 				if(res.stateNeeded == nrd::DescriptorType::TEXTURE)
 				{
@@ -870,10 +865,8 @@ namespace RT
 		flushCommandQueue();
 
 		if(mFeature)
-		{
 			resetDLSSFeature();
-			createDLSSResources();
-		}
+		createDLSSResources();
 		if(mDenoiser)
 		{
 			nrd::DestroyDenoiser(*mDenoiser);
