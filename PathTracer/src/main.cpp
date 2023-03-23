@@ -726,8 +726,8 @@ void App::update()
 
 	mFrameInExecution = mCurrFrameResource->fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->fence;
 
-	if(mMainPassCB.frameIndex > 63)
-		mMainPassCB.frameIndex = 1;
+	//if(mMainPassCB.frameIndex > 63)
+	//	mMainPassCB.frameIndex = 0;
 	
 	if(!mFrameInExecution)
 	{
@@ -807,7 +807,7 @@ void App::draw()
 	colorAdjust->dispatch(mCommandList.Get(), settings.width, settings.height);
 	
 	if(settings.dlss || settings.RTAA > 1)
-		phase = (phase + 1) % phaseCount;
+		phase++;
 
 	barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	mCommandList->ResourceBarrier(1, barriers);
@@ -838,6 +838,8 @@ void App::updateMainPassCB()
 	XMMATRIX viewProjPrev = XMMatrixMultiply(viewPrev, projPrev);
 	XMStoreFloat4x4(&mMainPassCB.viewProjPrev, XMMatrixTranspose(viewProjPrev));
 
+	mMainPassCB.jitter = jitter;
+
 	if(mCam->isDirty())
 	{
 		mCam->cleanView();
@@ -863,8 +865,6 @@ void App::updateMainPassCB()
 		if(settings.dlss)
 			mMainPassCB.LODOffset = log2f((float) settings.dlssWidth / settings.width) - 1.0F;
 	}
-
-	mMainPassCB.jitter = jitter;
 
 	mCurrFrameResource->passCB->copyData(0, mMainPassCB);
 }
@@ -980,7 +980,7 @@ void App::keyboardInput()
 	}
 
 	if(keyboard.isKeyDown(VK_SPACE))
-		mMainPassCB.frameIndex = 1;
+		mMainPassCB.frameIndex = 1; //TODO reset denoiser & DLSS
 	if(keyboard.isKeyPressed(VK_F11))
 		toggleFullscreen();
 }

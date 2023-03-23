@@ -20,10 +20,13 @@ float3 uncharted2_tonemapping(float3 color)
 	return ((color * (a * color + c * b) + d * e) / (color * (a * color + b) + d * f)) - e / f;
 }
 
-[numthreads(32, 32, 1)]
-void main(uint3 threadID: SV_DispatchThreadID)
+#define TEST 0
+
+[numthreads(16, 16, 1)]
+void main(uint3 pixel: SV_DispatchThreadID)
 {
-	float4 baseColor = image[threadID.xy] * exposure;
+#if !TEST
+	float4 baseColor = image[pixel.xy] * exposure;
 	float3 bcColor = contrast * (baseColor.rgb - 0.5F) + 0.5F + brightness;
 
 	float luma = dot(bcColor, float3(0.299F, 0.587F, 0.144F));
@@ -38,5 +41,8 @@ void main(uint3 threadID: SV_DispatchThreadID)
 		finalColor = tonemapped;
 	else
 		finalColor = pow(tonemapped, gamma);
-    image[threadID.xy] = float4(pow(baseColor, gamma).rgb, 1.0F);
+    image[pixel.xy] = float4(pow(baseColor, gamma).rgb, 1.0F); //TODO
+#else
+    image[pixel.xy] = clamp(image[pixel.xy], 0, 1);
+#endif
 }

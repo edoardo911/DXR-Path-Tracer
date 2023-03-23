@@ -82,7 +82,6 @@ struct ObjectData
     int diffuseIndex;
     int normalIndex;
     uint matIndex;
-    int unused;
 };
 
 float CalcAttenuation(float d, float falloffStart, float falloffEnd)

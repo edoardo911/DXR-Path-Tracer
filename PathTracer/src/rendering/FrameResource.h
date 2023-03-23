@@ -45,7 +45,7 @@ namespace RT
 		float nearPlane;
 		float farPlane;
 		float LODOffset = 0;
-		UINT32 frameIndex = 1;
+		UINT32 frameIndex = 0;
 		DirectX::XMFLOAT2 jitter;
 	};
 
@@ -56,7 +56,6 @@ namespace RT
 		INT32 diffuseIndex;
 		INT32 normalIndex;
 		UINT32 materialIndex;
-		UINT32 unused;
 	};
 
 	#define FLAG_MIRROR		0x00000001

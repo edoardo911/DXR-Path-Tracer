@@ -40,7 +40,6 @@ cbuffer cbPass: register(b0)
 
 #define _USE_MIPMAPS
 
-//ray differentials TODO move in path_tracing_utils.hlsli
 float computeTextureLOD(uint2 size, float3 d, float t)
 {
 #ifdef _USE_MIPMAPS
@@ -350,8 +349,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         reflPayload.colorAndDistance = float4(1, 1, 1, RayTCurrent());
         reflPayload.recursionDepth = payload.recursionDepth + 1;
         reflPayload.virtualZ = -1;
-        reflPayload.albedoAndZ.xyz = worldOrigin;
-        reflPayload.specularAndDistance.xyz = WorldRayDirection();
+        reflPayload.albedoAndZ.xyz = WorldRayDirection();
         
         RayDesc reflRay;
         reflRay.Origin = worldOrigin;
@@ -393,8 +391,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         refrPayload.colorAndDistance = float4(1, 1, 1, RayTCurrent());
         refrPayload.recursionDepth = payload.recursionDepth + 1;
         refrPayload.virtualZ = -1;
-        refrPayload.albedoAndZ.xyz = worldOrigin;
-        refrPayload.specularAndDistance.xyz = WorldRayDirection();
+        refrPayload.albedoAndZ.xyz = WorldRayDirection();
 
         RayDesc refrRay;
         refrRay.Origin = worldOrigin;
@@ -426,7 +423,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     if(payload.recursionDepth > 1)
     {
-        float3 virtualPos = payload.albedoAndZ.xyz + RayTCurrent() * payload.specularAndDistance.xyz;
+        float3 virtualPos = WorldRayOrigin() + RayTCurrent() * payload.albedoAndZ.xyz;
         payload.virtualZ = mul(float4(virtualPos, 1.0), gView).z;
     }
     
@@ -434,7 +431,13 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         hitColor.rgb *= 1.0 - metallic;
     else
         hitColor.a = RayTCurrent();
+    if(material.metallic == 1.0 || material.diffuseAlbedo.a == 0.0)
+        hitColor.a = 0;
+    else if(material.metallic == 0.0 && material.diffuseAlbedo.a == 1.0)
+        payload.specularAndDistance.a = 0;
     payload.colorAndDistance = hitColor;
     payload.normalAndRough = float4(norm, material.roughness);
     payload.albedoAndZ = float4(mapColor.rgb, mul(float4(worldOrigin, 1.0), gView).z);
+    if(material.roughness >= 0.05)
+        payload.virtualZ = payload.albedoAndZ.w;
 }

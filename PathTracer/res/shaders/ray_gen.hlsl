@@ -2,7 +2,6 @@
 
 #define NRD_NORMAL_ENCODING 2
 #define NRD_ROUGHNESS_ENCODING 1
-#define NRD_HEADER_ONLY
 #include "include/NRD.hlsli"
 
 cbuffer cbPass: register(b0)
@@ -38,7 +37,7 @@ void RayGen()
     uint2 launchIndex = DispatchRaysIndex().xy;
     float2 dims = float2(DispatchRaysDimensions().xy);
     float2 d = ((launchIndex + 0.5F) / dims) * 2.0F - 1.0F;
-    float2 jitteredD = ((launchIndex + jitter + 0.5F) / dims) * 2.0F - 1.0F;
+    float2 jitteredD = d + jitter / dims;
     
     RayDesc ray;
     ray.Origin = mul(gInvView, float4(0, 0, 0, 1)).xyz;
@@ -57,9 +56,9 @@ void RayGen()
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
     
-    //non jittered informations
-    target = mul(gInvProj, float4(d.x, -d.y, 1, 1));
-    ray.Direction = mul(gInvView, float4(target.xyz, 0)).xyz;
+    //non jittered informations TODO is needed?
+    //target = mul(gInvProj, float4(d.x, -d.y, 1, 1));
+    //ray.Direction = mul(gInvView, float4(target.xyz, 0)).xyz;
     
     PosPayload pp;
     pp.hPosAndT = float4(0.0, 0.0, 0.0, -1.0);
@@ -76,9 +75,9 @@ void RayGen()
         float3 lastPos = mul(float4(pp.hPosAndT.xyz, 1.0), gData[pp.instanceID].toPrevWorld).xyz;
         lastPosH = mul(float4(lastPos, 1.0), gViewProjPrev);
     }
-    
+        
     float2 uv = (lastPosH.xy / lastPosH.w) * float2(0.5, -0.5) + 0.5;
-    float2 sampleUv = d * 0.5 + 0.5;
+    float2 sampleUv = jitteredD * 0.5 + 0.5;
     
     gMotionVectorBuffer[launchIndex] = (uv - sampleUv) * dims;
     gNormalAndRoughness[launchIndex] = NRD_FrontEnd_PackNormalAndRoughness(payload.normalAndRough.xyz, payload.normalAndRough.w);
@@ -90,10 +89,12 @@ void RayGen()
         virtualZ = gFarPlane - gNearPlane;
     gZDepth[launchIndex] = z;
     
-    float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, z, float4(3.0, 0.1, 20.0, -25.0));
+    const float4 hitDistParams = float4(3.0, 0.1, 20.0, -25.0);
+    
+    float hitT = REBLUR_FrontEnd_GetNormHitDist(payload.colorAndDistance.a, z, hitDistParams);
     gOutput[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.colorAndDistance.rgb, hitT, true);
     
-    hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, virtualZ, float4(3.0, 0.1, 20.0, -25.0), payload.normalAndRough.w);
+    hitT = REBLUR_FrontEnd_GetNormHitDist(payload.specularAndDistance.a, virtualZ, hitDistParams, payload.normalAndRough.w);
     gSpecularMap[launchIndex] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(payload.specularAndDistance.rgb, hitT, true);
     if(payload.albedoAndZ.w < 0)
         gSky[launchIndex] = float4(payload.colorAndDistance.rgb, 1);

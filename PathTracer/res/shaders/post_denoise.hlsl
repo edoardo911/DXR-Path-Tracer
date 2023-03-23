@@ -1,6 +1,5 @@
 #define NRD_NORMAL_ENCODING 2
 #define NRD_ROUGHNESS_ENCODING 1
-#define NRD_HEADER_ONLY
 #include "include/NRD.hlsli"
 
 RWTexture2D<float4> gOutput: register(u0);
@@ -25,7 +24,7 @@ void main(uint3 pixel: SV_DispatchThreadID)
     float4 specular = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedSpecular);
 
 #if !TEST
-    float3 finalColor = skyColor.a > 0 ? skyColor.rgb : (color.rgb * mapColor.rgb * color.a + specular.rgb);
+    float3 finalColor = skyColor.a > 0 ? skyColor.rgb : (color.rgb * color.a * mapColor.rgb + specular.rgb);
     gOutput[pixel.xy] = float4(finalColor, 0);
 #else
     if(pixel.x < 320 || pixel.y < 180 || pixel.x > 960)

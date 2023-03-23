@@ -65,8 +65,8 @@ namespace RT
 		cmdList->SetComputeRootDescriptorTable(0, mHeap->GetGPUDescriptorHandleForHeapStart());
 		cmdList->SetComputeRootConstantBufferView(1, mCB->resource()->GetGPUVirtualAddress());
 
-		UINT w = (UINT) ceilf(width / 32.0F);
-		UINT h = (UINT) ceilf(height / 32.0F);
+		UINT w = (UINT) ceilf(width / 16.0F);
+		UINT h = (UINT) ceilf(height / 16.0F);
 		cmdList->Dispatch(w, h, 1);
 	}
 }
