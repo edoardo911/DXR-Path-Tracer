@@ -22,7 +22,7 @@ cbuffer cbPass: register(b0)
 RWTexture2D<float4> gOutput: register(u0);
 RWTexture2D<float4> gNormalAndRoughness: register(u1);
 RWTexture2D<float> gDepthBuffer: register(u2);
-RWTexture2D<float2> gMotionVectorBuffer: register(u3);
+RWTexture2D<float3> gMotionVectorBuffer: register(u3);
 RWTexture2D<float> gZDepth: register(u4);
 RWTexture2D<float4> gSpecularMap: register(u5);
 RWTexture2D<float4> gSky: register(u6);
@@ -65,7 +65,7 @@ void RayGen()
     pp.instanceID = -1;
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 3, 0, 3, ray, pp);
     
-    gDepthBuffer[launchIndex] = min(pp.hPosAndT.w / (gFarPlane - gNearPlane), 1.0F);
+    //gDepthBuffer[launchIndex] = min(pp.hPosAndT.w / (gFarPlane - gNearPlane), 1.0F);
     
     float4 lastPosH;
     if(pp.instanceID < 0) //if missed, use the position as is
@@ -79,7 +79,7 @@ void RayGen()
     float2 uv = (lastPosH.xy / lastPosH.w) * float2(0.5, -0.5) + 0.5;
     float2 sampleUv = jitteredD * 0.5 + 0.5;
     
-    gMotionVectorBuffer[launchIndex] = (uv - sampleUv) * dims;
+    gMotionVectorBuffer[launchIndex] = 0; //(uv - sampleUv) * dims
     gNormalAndRoughness[launchIndex] = NRD_FrontEnd_PackNormalAndRoughness(payload.normalAndRough.xyz, payload.normalAndRough.w);
     
     float z = payload.albedoAndZ.w, virtualZ = payload.virtualZ;

@@ -73,7 +73,7 @@ namespace RT
 		void createDenoiserPipelines();
 		void createDenoiserResources();
 		void DLSS(ID3D12Resource* outputResource, float jitterX = 0.0F, float jitterY = 0.0F, bool reset = false);
-		void denoise(nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource);
+		void denoise(const nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource);
 
 		void createCommandObjects();
 		void createSwapChain();
@@ -102,7 +102,7 @@ namespace RT
 		Microsoft::WRL::ComPtr<ID3D12Resource> mResolvedBuffer;
 
 		//denoiser
-		nrd::Denoiser* mDenoiser;
+		nrd::Instance* mDenoiser;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12RootSignature>> mDenoiserRootSignatures;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12PipelineState>> mDenoiserPipelines;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> mDenoiserResources;

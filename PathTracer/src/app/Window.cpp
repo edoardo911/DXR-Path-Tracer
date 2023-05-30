@@ -27,7 +27,7 @@ namespace RT
 			NVSDK_NGX_D3D12_ReleaseFeature(mFeature);
 		if(settings.dlss)
 			NVSDK_NGX_D3D12_Shutdown();
-		nrd::DestroyDenoiser(*mDenoiser);
+		nrd::DestroyInstance(*mDenoiser);
 	}
 
 	bool Window::initialize()
@@ -274,21 +274,21 @@ namespace RT
 
 	bool Window::initDenoiser()
 	{
-		nrd::MethodDesc methodDesc = {};
-		methodDesc.method = nrd::Method::REBLUR_DIFFUSE_SPECULAR;
-		methodDesc.fullResolutionWidth = settings.dlss ? settings.dlssWidth : settings.width;
-		methodDesc.fullResolutionHeight = settings.dlss ? settings.dlssHeight : settings.height;
+		nrd::DenoiserDesc methodDesc = {};
+		methodDesc.denoiser = nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR;
+		methodDesc.renderWidth = settings.dlss ? settings.dlssWidth : settings.width;
+		methodDesc.renderHeight = settings.dlss ? settings.dlssHeight : settings.height;
 
-		nrd::DenoiserCreationDesc desc = {};
-		desc.requestedMethodsNum = 1;
-		desc.requestedMethods = &methodDesc;
+		nrd::InstanceCreationDesc desc = {};
+		desc.denoisersNum = 1;
+		desc.denoisers = &methodDesc;
 
-		if(nrd::CreateDenoiser(desc, mDenoiser) != nrd::Result::SUCCESS)
+		if(nrd::CreateInstance(desc, mDenoiser) != nrd::Result::SUCCESS)
 			return false;
 		
 		nrd::ReblurSettings s = {};
 		s.hitDistanceReconstructionMode = nrd::HitDistanceReconstructionMode::AREA_3X3;
-		nrd::SetMethodSettings(*mDenoiser, nrd::Method::REBLUR_DIFFUSE_SPECULAR, &s);
+		nrd::SetDenoiserSettings(*mDenoiser, 0, &s);
 
 		createDenoiserPipelines();
 		createDenoiserResources();
@@ -297,7 +297,7 @@ namespace RT
 
 	void Window::createDenoiserPipelines()
 	{
-		const nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
+		const nrd::InstanceDesc desc = nrd::GetInstanceDesc(*mDenoiser);
 
 		mDenoiserPipelines.clear();
 		mDenoiserRootSignatures.clear();
@@ -350,7 +350,7 @@ namespace RT
 		mDenoiserResources.clear();
 		mDenoiserResourcesHeaps.clear();
 
-		const nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
+		const nrd::InstanceDesc desc = nrd::GetInstanceDesc(*mDenoiser);
 		UINT32 poolSize = desc.permanentPoolSize + desc.transientPoolSize;
 		mDenoiserResources.resize(poolSize);
 		mDenoiserResourcesHeaps.resize(desc.descriptorPoolDesc.setsMaxNum);
@@ -464,7 +464,7 @@ namespace RT
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.DepthOrArraySize = 1;
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+		resDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 		resDesc.Width = settings.dlss ? settings.dlssWidth : settings.width;
 		resDesc.Height = settings.dlss ? settings.dlssHeight : settings.height;
@@ -696,12 +696,14 @@ namespace RT
 		NGX_D3D12_EVALUATE_DLSS_EXT(mCommandList.Get(), mFeature, params, &evalDesc);
 	}
 
-	void Window::denoise(nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource)
+	void Window::denoise(const nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource)
 	{
-		const nrd::DenoiserDesc desc = nrd::GetDenoiserDesc(*mDenoiser);
+		const nrd::InstanceDesc desc = nrd::GetInstanceDesc(*mDenoiser);
 		const nrd::DispatchDesc* dd;
 		uint32_t num;
-		nrd::GetComputeDispatches(*mDenoiser, nrdSettings, dd, num);
+		nrd::Identifier i = 0;
+		nrd::GetComputeDispatches(*mDenoiser, &i, 1, dd, num);
+		nrd::SetCommonSettings(*mDenoiser, nrdSettings);
 
 		BYTE* cbvData;
 		mDenoiserCBV->Map(0, nullptr, reinterpret_cast<void**>(&cbvData));
@@ -733,7 +735,7 @@ namespace RT
 				else if(res.type == nrd::ResourceType::IN_MV)
 				{
 					tex = mMotionVectorBuffer.Get();
-					format = DXGI_FORMAT_R32G32_FLOAT;
+					format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 				}
 				else if(res.type == nrd::ResourceType::IN_VIEWZ)
 				{
@@ -808,7 +810,6 @@ namespace RT
 			mCommandList->SetComputeRootDescriptorTable(0, mDenoiserResourcesHeaps[i]->GetGPUDescriptorHandleForHeapStart());
 			mCommandList->SetComputeRootDescriptorTable(1, mDenoiserSamplerHeap->GetGPUDescriptorHandleForHeapStart());
 			mCommandList->SetComputeRootConstantBufferView(2, mDenoiserCBV->GetGPUVirtualAddress() + i * constantBufferViewSize);
-
 			mCommandList->Dispatch(d.gridWidth, d.gridHeight, 1);
 		}
 
@@ -869,7 +870,7 @@ namespace RT
 		createDLSSResources();
 		if(mDenoiser)
 		{
-			nrd::DestroyDenoiser(*mDenoiser);
+			nrd::DestroyInstance(*mDenoiser);
 			initDenoiser();
 		}
 	}

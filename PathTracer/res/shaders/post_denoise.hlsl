@@ -9,8 +9,6 @@ Texture2D gSpecular: register(t1);
 Texture2D gSky: register(t2);
 Texture2D gMapColor: register(t3);
 
-#define TEST 1
-
 [numthreads(16, 16, 1)]
 void main(uint3 pixel: SV_DispatchThreadID)
 {
@@ -23,16 +21,12 @@ void main(uint3 pixel: SV_DispatchThreadID)
     float4 color = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedColor);
     float4 specular = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedSpecular);
 
-#if !TEST
-    float3 finalColor = skyColor.a > 0 ? skyColor.rgb : (color.rgb * color.a * mapColor.rgb + specular.rgb);
+    float3 diffuseComponent = color.rgb * color.a;
+    float3 specularComponent = specular.rgb;
+    
+    if(mapColor.r != 0 && mapColor.g != 0 && mapColor.b != 0)
+        diffuseComponent *= mapColor.rgb;
+
+    float3 finalColor = (diffuseComponent + specularComponent); //skyColor.a > 0 ? skyColor.rgb : 
     gOutput[pixel.xy] = float4(finalColor, 0);
-#else
-    if(pixel.x < 320 || pixel.y < 180 || pixel.x > 960)
-        gOutput[pixel.xy] = float4(packedColor.rgb, 0);
-    else
-    {
-        float3 finalColor = skyColor.a > 0 ? skyColor.rgb : (specular.rgb);
-        gOutput[pixel.xy] = float4(finalColor, 0);
-    }
-#endif
 }

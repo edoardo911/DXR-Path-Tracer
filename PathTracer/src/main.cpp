@@ -343,7 +343,7 @@ void App::buildMaterials()
 	auto redBall = std::make_unique<Material>();
 	redBall->DiffuseAlbedo = { 1.0F, 0.0F, 0.0F, 0.2F };
 	redBall->matCBIndex = 1;
-	redBall->Roughness = 0.0F; //0.05
+	redBall->Roughness = 0.05F;
 	redBall->refractionIndex = 0.9F;
 	mMaterials.push_back(std::move(redBall));
 
@@ -357,7 +357,7 @@ void App::buildMaterials()
 	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.3F };
 	metallicBall->metallic = 0.8F;
 	metallicBall->matCBIndex = 3;
-	metallicBall->Roughness = 0.0F; //0.3
+	metallicBall->Roughness = 0.3F;
 	mMaterials.push_back(std::move(metallicBall));
 }
 
@@ -701,7 +701,7 @@ void App::allocateOutputResources()
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	md3dDevice->CreateShaderResourceView(mDepthBuffer.Get(), &srvDesc, taaHandle);
 	taaHandle.Offset(1, mCbvSrvUavDescriptorSize);
-	srvDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	md3dDevice->CreateShaderResourceView(mMotionVectorBuffer.Get(), &srvDesc, taaHandle);
 	taaHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mResolvedBuffer.Get(), nullptr, &uavDesc, taaHandle);
@@ -928,13 +928,13 @@ void App::updateDenoiser()
 	nrdSettings.inputSubrectOrigin[1] = 0;
 	nrdSettings.frameIndex = mMainPassCB.frameIndex;
 	nrdSettings.disocclusionThreshold = 0.05F;
-	nrdSettings.enableValidation = true;
+	nrdSettings.enableValidation = false;
 	nrdSettings.splitScreen = 0.0F;
 	nrdSettings.denoisingRange = 9000;
-	nrdSettings.isMotionVectorInWorldSpace = false;
-	nrdSettings.motionVectorScale[0] = 1.0F / (settings.dlss ? settings.dlssWidth : settings.width);
-	nrdSettings.motionVectorScale[1] = 1.0F / (settings.dlss ? settings.dlssHeight : settings.height);
-	nrdSettings.motionVectorScale[2] = 0.0F;
+	nrdSettings.isMotionVectorInWorldSpace = true;
+	nrdSettings.motionVectorScale[0] = 1.0F; //1.0F / (settings.dlss ? settings.dlssWidth : settings.width)
+	nrdSettings.motionVectorScale[1] = 1.0F; //1.0F / (settings.dlss ? settings.dlssHeight : settings.height)
+	nrdSettings.motionVectorScale[2] = 1.0F;
 }
 
 void App::onResize()

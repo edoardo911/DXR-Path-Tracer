@@ -92,14 +92,9 @@ float3 ClipAABB(float3 aabbMin, float3 aabbMax, float3 prevSample)
         return prevSample; // point inside aabb
 }
 
-#define TEST 1
-
 [numthreads(16, 16, 1)]
 void main(uint3 pixel: SV_DispatchThreadID)
 {
-#if TEST
-    gOutput[pixel.xy] = gInput[pixel.xy];
-#else
     float3 sourceSampleTotal = float3(0, 0, 0);
     float sourceSampleWeight = 0.0;
     float3 neighborhoodMin = 10000;
@@ -175,5 +170,4 @@ void main(uint3 pixel: SV_DispatchThreadID)
         float3 result = (sourceSample * sourceWeight + historySample * historyWeight) / max(sourceWeight + historyWeight, 0.00001);
         gOutput[pixel.xy] = float4(result, 1.0);
     }
-#endif
 }
