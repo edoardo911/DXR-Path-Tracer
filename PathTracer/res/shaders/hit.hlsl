@@ -232,7 +232,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         diffuseAlbedo *= mapColor;
     
     //indirect back propagation
-    if(payload.colorAndDistance.a < 0.0F)
+    if(payload.colorAndDistance.a < 0.0F) //TODO indirect lighting function
     {
         int i;
     #if (NUM_DIR_LIGHTS > 0)
@@ -287,9 +287,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     }
     
     float3 indirectLight = 0.0F;
-    HitInfo reflPayload;
-    reflPayload.colorAndDistance = float4(0, 0, 0, -1);
-    reflPayload.recursionDepth = payload.recursionDepth + 1;
+    HitInfo indirectPayload;
+    indirectPayload.colorAndDistance = float4(0, 0, 0, -1);
+    indirectPayload.recursionDepth = payload.recursionDepth + 1;
 	
     float3 rv = float3(nextRand(seed), nextRand(seed), nextRand(seed)) * 2.0F - 1.0F;
 
@@ -299,8 +299,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     reflRay.TMin = gNearPlane;
     reflRay.TMax = 2.5F;
 	
-    TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, reflPayload);
-    indirectLight = reflPayload.colorAndDistance.rgb;
+    TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, reflRay, indirectPayload);
+    indirectLight = indirectPayload.colorAndDistance.rgb;
     
     //ambient light
     float4 ambient = gAmbientLight * diffuseAlbedo;
@@ -323,13 +323,16 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         hitColor.a = aoPayload.hitT;
     
     //shadows
-    float3 shadowFactor = calcShadow(gLights[0], worldOrigin, norm, seed); //choose randomly one of the lights
+    float3 shadowFactor = float3(0.0, 0.0, 0.0);
+    for(int i = 0; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
+        shadowFactor += calcShadow(gLights[i], worldOrigin, norm, seed);
+    shadowFactor /= NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS;
     
     //blinn phong
     const float shininess = max(1.0F - material.roughness, 0.01F);
     LightMaterial mat = { diffuseAlbedo, material.fresnelR0, shininess };
     float3 specAlbedo;
-    float4 directLight = ComputeLighting(gLights[0], mat, worldOrigin, norm, -WorldRayDirection(), specAlbedo); //TODO use path tracing
+    float4 directLight = float4(shadowFactor, 1.0) * ComputeLighting(gLights[0], mat, worldOrigin, norm, -WorldRayDirection(), specAlbedo); //TODO use path tracing
     
     hitColor.rgb += directLight.rgb * diffuseAlbedo.rgb;
     hitColor.rgb += indirectLight * diffuseAlbedo.rgb;
@@ -376,9 +379,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         if(payload.recursionDepth == 2)
             payload.virtualZ = reflPayload.virtualZ;
     }
-    
-    //TODO rename indirect light payload
-    
+        
     //refraction
     if(material.diffuseAlbedo.a < 1.0 && payload.recursionDepth < MAX_RECURSION_DEPTH)
     {
@@ -429,10 +430,13 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         payload.virtualZ = mul(float4(virtualPos, 1.0), gView).z;
     }
     
-    if(payload.recursionDepth == 1)
-        hitColor.rgb *= 1.0 - metallic;
-    else
-        hitColor.a = RayTCurrent();
+    hitColor.rgb *= 1.0 - metallic;
+    if(payload.recursionDepth > 1)
+    {
+        hitColor.rgb += payload.specularAndDistance.rgb;
+        //hitColor.a = RayTCurrent();
+    }
+    
     if(material.metallic == 1.0 || material.diffuseAlbedo.a == 0.0)
         hitColor.a = 0;
     payload.colorAndDistance = hitColor;

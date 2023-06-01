@@ -701,7 +701,7 @@ void App::allocateOutputResources()
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	md3dDevice->CreateShaderResourceView(mDepthBuffer.Get(), &srvDesc, taaHandle);
 	taaHandle.Offset(1, mCbvSrvUavDescriptorSize);
-	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	srvDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
 	md3dDevice->CreateShaderResourceView(mMotionVectorBuffer.Get(), &srvDesc, taaHandle);
 	taaHandle.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mResolvedBuffer.Get(), nullptr, &uavDesc, taaHandle);
@@ -806,8 +806,10 @@ void App::draw()
 
 	colorAdjust->dispatch(mCommandList.Get(), settings.width, settings.height);
 	
-	if(settings.dlss || settings.RTAA > 1)
-		phase++;
+	if(settings.RTAA > 1)
+		phase = (phase + 1) % settings.RTAA;
+	if(settings.dlss)
+		phase = (phase + 1) % phaseCount;
 
 	barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	mCommandList->ResourceBarrier(1, barriers);
@@ -931,10 +933,10 @@ void App::updateDenoiser()
 	nrdSettings.enableValidation = false;
 	nrdSettings.splitScreen = 0.0F;
 	nrdSettings.denoisingRange = 9000;
-	nrdSettings.isMotionVectorInWorldSpace = true;
-	nrdSettings.motionVectorScale[0] = 1.0F; //1.0F / (settings.dlss ? settings.dlssWidth : settings.width)
-	nrdSettings.motionVectorScale[1] = 1.0F; //1.0F / (settings.dlss ? settings.dlssHeight : settings.height)
-	nrdSettings.motionVectorScale[2] = 1.0F;
+	nrdSettings.isMotionVectorInWorldSpace = false;
+	nrdSettings.motionVectorScale[0] = 1.0F / (settings.dlss ? settings.dlssWidth : settings.width);
+	nrdSettings.motionVectorScale[1] = 1.0F / (settings.dlss ? settings.dlssHeight : settings.height);
+	nrdSettings.motionVectorScale[2] = 0.0F;
 }
 
 void App::onResize()

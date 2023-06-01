@@ -12,7 +12,7 @@ Texture2D gMapColor: register(t3);
 [numthreads(16, 16, 1)]
 void main(uint3 pixel: SV_DispatchThreadID)
 {
-    float2 pixelPos = pixel.xy + 0.5;
+    float2 pixelPos = pixel.xy;
     float4 packedColor = gInput[pixelPos];
     float4 packedSpecular = gSpecular[pixelPos];
     float4 skyColor = gSky[pixelPos];
@@ -21,12 +21,9 @@ void main(uint3 pixel: SV_DispatchThreadID)
     float4 color = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedColor);
     float4 specular = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedSpecular);
 
-    float3 diffuseComponent = color.rgb * color.a;
+    float3 diffuseComponent = color.rgb * mapColor.rgb;
     float3 specularComponent = specular.rgb;
-    
-    if(mapColor.r != 0 && mapColor.g != 0 && mapColor.b != 0)
-        diffuseComponent *= mapColor.rgb;
 
-    float3 finalColor = (diffuseComponent + specularComponent); //skyColor.a > 0 ? skyColor.rgb : 
+    float3 finalColor = skyColor.a > 0 ? skyColor.rgb : (diffuseComponent + specularComponent) * color.a;
     gOutput[pixel.xy] = float4(finalColor, 0);
 }

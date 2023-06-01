@@ -464,7 +464,7 @@ namespace RT
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.DepthOrArraySize = 1;
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		resDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
 		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 		resDesc.Width = settings.dlss ? settings.dlssWidth : settings.width;
 		resDesc.Height = settings.dlss ? settings.dlssHeight : settings.height;
@@ -687,8 +687,8 @@ namespace RT
 		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
 		evalDesc.pInDepth = mDepthBuffer.Get();
 		evalDesc.pInMotionVectors = mMotionVectorBuffer.Get();
-		evalDesc.InJitterOffsetX = -jitterX;
-		evalDesc.InJitterOffsetY = -jitterY;
+		evalDesc.InJitterOffsetX = jitterX;
+		evalDesc.InJitterOffsetY = jitterY;
 		evalDesc.InRenderSubrectDimensions = { settings.dlssWidth, settings.dlssHeight };
 		evalDesc.InReset = reset ? 1 : 0;
 		evalDesc.InFrameTimeDeltaInMsec = mTimer.deltaTime();
@@ -735,7 +735,7 @@ namespace RT
 				else if(res.type == nrd::ResourceType::IN_MV)
 				{
 					tex = mMotionVectorBuffer.Get();
-					format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+					format = DXGI_FORMAT_R32G32_FLOAT;
 				}
 				else if(res.type == nrd::ResourceType::IN_VIEWZ)
 				{
