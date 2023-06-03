@@ -9,7 +9,7 @@
 
 #define NUM_DIR_LIGHTS 0
 #define NUM_POINT_LIGHTS 0
-#define NUM_SPOT_LIGHTS 1
+#define NUM_SPOT_LIGHTS 2
 
 //payloads
 struct HitInfo

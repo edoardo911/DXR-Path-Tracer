@@ -20,7 +20,7 @@ void main(uint3 pixel: SV_DispatchThreadID)
     
     float4 color = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedColor);
     float4 specular = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(packedSpecular);
-
+    
     float3 diffuseComponent = color.rgb * mapColor.rgb;
     float3 specularComponent = specular.rgb;
 

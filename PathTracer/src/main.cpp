@@ -806,9 +806,9 @@ void App::draw()
 
 	colorAdjust->dispatch(mCommandList.Get(), settings.width, settings.height);
 	
-	if(settings.RTAA > 1)
+	if(settings.RTAA > 1 && !settings.dlss)
 		phase = (phase + 1) % settings.RTAA;
-	if(settings.dlss)
+	else if(settings.dlss)
 		phase = (phase + 1) % phaseCount;
 
 	barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);

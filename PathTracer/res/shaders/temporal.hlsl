@@ -92,7 +92,7 @@ float3 ClipAABB(float3 aabbMin, float3 aabbMax, float3 prevSample)
         return prevSample; // point inside aabb
 }
 
-#define TEST 0
+#define TEST 1
 
 [numthreads(16, 16, 1)]
 void main(uint3 pixel: SV_DispatchThreadID)
@@ -152,6 +152,11 @@ void main(uint3 pixel: SV_DispatchThreadID)
     else
     {
         float3 historySample = SampleTextureCatmullRom(gHistory, gLinearSampler, historyTexCoord, float2(w, h)).rgb;
+        if(historySample.r == 0 && historySample.g == 0 && historySample.b == 0)
+        {
+            gOutput[pixel.xy] = float4(sourceSample, 1);
+            return;
+        }
     
         float oneDividedBySampleCount = 1.0 / 9.0;
         float gamma = 1.0;

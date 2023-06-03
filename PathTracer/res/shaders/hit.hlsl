@@ -164,6 +164,52 @@ float3 calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
     return shadowFactor;
 }
 
+float3 calcIndirectLight(Light light, float4 diffuseAlbedo, float3 norm, Material material, float3 worldOrigin)
+{
+    float3 color = 0;
+    if(light.Type == LIGHT_TYPE_DIRECTIONAL)
+    {
+        float ldot = diffuseAlbedo.a < 1.0 ? dot(-norm, -light.Direction) : dot(norm, -light.Direction);
+        float lightPower = (1.0 - diffuseAlbedo.a) * max(dot(-norm, -light.Direction), 0.0) + (1.0 - material.roughness) * max(ldot, 0.0);
+
+        if(material.metallic > 0.0 || diffuseAlbedo.a < 1.0)
+            lightPower *= 0.9;
+        else
+            lightPower *= 0.75;
+        color = lerp(light.Strength, diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0)) * lightPower * 2;
+    }
+    else if(light.Type == LIGHT_TYPE_POINTLIGHT)
+    {
+        float3 lightDir = normalize(light.Position - worldOrigin);
+        float ldot = diffuseAlbedo.a < 1.0 ? dot(-norm, lightDir) : dot(norm, lightDir);
+        float lightPower = (1.0 - diffuseAlbedo.a) * max(dot(-norm, lightDir), 0.0) + (1.0 - material.roughness) * max(ldot, 0.0);
+
+        if(material.metallic > 0.0 || diffuseAlbedo.a < 1.0)
+            lightPower *= 0.9;
+        else
+            lightPower *= 0.75;
+        float3 c = lerp(light.Strength, diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0)) * lightPower * 2;
+        color = c.rgb * min(3.5F / (RayTCurrent() + length(light.Position - worldOrigin)), 1.0);
+    }
+    else if(light.Type == LIGHT_TYPE_SPOTLIGHT)
+    {
+        
+        float3 lightDir = normalize(light.Position - worldOrigin);
+        float ldot = diffuseAlbedo.a < 1.0 ? dot(-norm, lightDir) : dot(norm, lightDir);
+        float spotFactor = pow(max(dot(-WorldRayDirection(), light.Direction), 0.0F), light.SpotPower);
+        float lightPower = (1.0F - diffuseAlbedo.a) * max(dot(-norm, light.Direction), 0.0F) + (1.0F - material.roughness) * max(ldot, 0.0F);
+            
+        if(material.metallic > 0.0 || diffuseAlbedo.a < 1.0)
+            lightPower *= 0.9;
+        else
+            lightPower *= 0.75;
+        float3 c = lerp(light.Strength, diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0F)) * lightPower * spotFactor * 2;
+        color = c.rgb * min(2.5F / (RayTCurrent() + length(light.Position - worldOrigin)), 1.0F);
+    }
+    
+    return color;
+}
+
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, Attributes attrib)
 {
@@ -184,6 +230,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     tangent = normalize(mul(tangent, (float3x3) objectData.world));
     
     uint seed = initRand(DispatchRaysIndex().x * gFrameIndex, DispatchRaysIndex().y * gFrameIndex, 16);
+    uint chosenLight = floor(nextRand(seed) * (NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS));
     
     Material material = gMaterials[objectData.matIndex];
     
@@ -205,6 +252,15 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     gLights[0].SpotPower = 1.0F;
     gLights[0].Radius = 0.15F;
     gLights[0].Type = LIGHT_TYPE_SPOTLIGHT;
+    
+    gLights[1].Strength = float3(1.0F, 0.0F, 1.0F);
+    gLights[1].Direction = float3(0.0F, -1.0F, 0.0F);
+    gLights[1].Position = float3(1.7F, 2.45F, -1.0F);
+    gLights[1].FalloffStart = 0.01F;
+    gLights[1].FalloffEnd = 10.0F;
+    gLights[1].SpotPower = 1.0F;
+    gLights[1].Radius = 0.15F;
+    gLights[1].Type = LIGHT_TYPE_SPOTLIGHT;
     
     //global vars
     const float4 gAmbientLight = float4(0.2F, 0.2F, 0.2F, 1.0F);
@@ -232,56 +288,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         diffuseAlbedo *= mapColor;
     
     //indirect back propagation
-    if(payload.colorAndDistance.a < 0.0F) //TODO indirect lighting function
+    if(payload.colorAndDistance.a < 0.0F)
     {
-        int i;
-    #if (NUM_DIR_LIGHTS > 0)
-        for(i = 0; i < NUM_DIR_LIGHTS; ++i)
-        {
-            float ldot = diffuseAlbedo.a < 1.0 ? dot(-norm, -gLights[i].Direction) : dot(norm, -gLights[i].Direction);
-            float lightPower = (1.0 - diffuseAlbedo.a) * max(dot(-norm, -gLights[i].Direction), 0.0) + (1.0 - material.roughness) * max(ldot, 0.0);
-
-            if(material.metallic > 0.0 || diffuseAlbedo.a < 1.0)
-                lightPower *= 0.9;
-            else
-                lightPower *= 0.75;
-            float3 color = lerp(gLights[i].Strength, diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0)) * lightPower * 2;
-            payload.colorAndDistance.rgb += color.rgb;
-        }
-    #endif
-
-    #if (NUM_POINT_LIGHTS > 0)
-        for(i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; ++i)
-        {
-            float3 lightDir = normalize(gLights[i].Position - worldOrigin);
-            float ldot = diffuseAlbedo.a < 1.0 ? dot(-norm, lightDir) : dot(norm, lightDir);
-            float lightPower = (1.0 - diffuseAlbedo.a) * max(dot(-norm, lightDir), 0.0) + (1.0 - material.roughness) * max(ldot, 0.0);
-
-            if(material.metallic > 0.0 || diffuseAlbedo.a < 1.0)
-                lightPower *= 0.9;
-            else
-                lightPower *= 0.75;
-            float3 color = lerp(gLights[i].Strength, diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0)) * lightPower * 2;
-            payload.colorAndDistance.rgb += color.rgb * min(3.5F / (RayTCurrent() + length(gLights[i].Position - worldOrigin)), 1.0);
-        }
-    #endif
-
-    #if (NUM_SPOT_LIGHTS > 0)
-        for(i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
-        {
-            float3 lightDir = normalize(gLights[i].Position - worldOrigin);
-            float ldot = diffuseAlbedo.a < 1.0 ? dot(-norm, lightDir) : dot(norm, lightDir);
-            float spotFactor = pow(max(dot(-WorldRayDirection(), gLights[i].Direction), 0.0F), gLights[i].SpotPower);
-            float lightPower = (1.0F - diffuseAlbedo.a) * max(dot(-norm, gLights[i].Direction), 0.0F) + (1.0F - material.roughness) * max(ldot, 0.0F);
-            
-            if(material.metallic > 0.0 || diffuseAlbedo.a < 1.0)
-                lightPower *= 0.9;
-            else
-                lightPower *= 0.75;
-            float3 color = lerp(gLights[i].Strength, diffuseAlbedo.rgb, min(diffuseAlbedo.a * 3, 1.0F)) * lightPower * spotFactor * 2;
-            payload.colorAndDistance.rgb += color.rgb * min(2.5F / (RayTCurrent() + length(gLights[i].Position - worldOrigin)), 1.0F);
-        }
-    #endif
+        payload.colorAndDistance.rgb = calcIndirectLight(gLights[chosenLight], diffuseAlbedo, norm, material, worldOrigin);
         payload.colorAndDistance.a = RayTCurrent();
         return;
     }
@@ -332,7 +341,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     const float shininess = max(1.0F - material.roughness, 0.01F);
     LightMaterial mat = { diffuseAlbedo, material.fresnelR0, shininess };
     float3 specAlbedo;
-    float4 directLight = float4(shadowFactor, 1.0) * ComputeLighting(gLights[0], mat, worldOrigin, norm, -WorldRayDirection(), specAlbedo); //TODO use path tracing
+    float4 directLight = float4(shadowFactor, 1.0) * ComputeLighting(gLights[chosenLight], mat, worldOrigin, norm, -WorldRayDirection(), specAlbedo);
     
     hitColor.rgb += directLight.rgb * diffuseAlbedo.rgb;
     hitColor.rgb += indirectLight * diffuseAlbedo.rgb;
