@@ -27,9 +27,6 @@
     <ClCompile Include="src\utils\GeometryGenerator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\MathUtil.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\rendering\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -69,6 +66,15 @@
     <ClCompile Include="src\logging\Logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\rendering\PostDenoise.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\Temporal.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\ColorAdjust.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\utils\UploadBuffer.h">
@@ -81,9 +87,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\Timer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\MathUtil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\d3dx12.h">
@@ -143,5 +146,19 @@
     <ClInclude Include="src\logging\Logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\rendering\PostDenoise.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\Temporal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\ColorAdjust.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="res\shaders\post_denoise.hlsl" />
+    <FxCompile Include="res\shaders\temporal.hlsl" />
+    <FxCompile Include="res\shaders\color_adjust.hlsl" />
   </ItemGroup>
 </Project>

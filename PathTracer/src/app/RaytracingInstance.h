@@ -38,6 +38,7 @@ namespace RT
 		RaytracingInstance& operator=(const RaytracingInstance& rhs) = delete;
 
 		DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
+		DirectX::XMMATRIX worldPrev = DirectX::XMMatrixIdentity();
 		DirectX::XMMATRIX texTransform = DirectX::XMMatrixIdentity();
 		int numFramesDirty = NUM_FRAME_RESOURCES;
 
@@ -45,6 +46,9 @@ namespace RT
 		INT32 normalOffset = -1;
 		UINT matOffset = 0;
 		UINT objCBOffset = 0;
+
+		//to calculate previous world matrix: create a function to move instances and before calculating the new
+		//world matrix save the current state into the previous one
 
 		InstanceData* buffers = nullptr;
 		ObjectType type = OBJECT_TYPE_NORMAL;

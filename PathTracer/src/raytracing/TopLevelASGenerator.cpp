@@ -173,8 +173,7 @@ namespace nv_helpers_dx12
 			instanceDescs[i].InstanceID = m_instances[i].instanceID;
 			// Index of the hit group invoked upon intersection
 			instanceDescs[i].InstanceContributionToHitGroupIndex = m_instances[i].hitGroupIndex;
-			// Instance flags, including backface culling, winding, etc - TODO: should
-			// be accessible from outside
+			// Instance flags, including backface culling, winding, etc
 			instanceDescs[i].Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 			// Instance transform matrix
 			DirectX::XMMATRIX m = XMMatrixTranspose(
@@ -182,8 +181,7 @@ namespace nv_helpers_dx12
 			memcpy(instanceDescs[i].Transform, &m, sizeof(instanceDescs[i].Transform));
 			// Get access to the bottom level
 			instanceDescs[i].AccelerationStructure = m_instances[i].bottomLevelAS->GetGPUVirtualAddress();
-			// Visibility mask, always visible here - TODO: should be accessible from
-			// outside
+			// Visibility mask, always visible here
 			instanceDescs[i].InstanceMask = m_instances[i].mask;
 		}
 

@@ -23,10 +23,11 @@ namespace RT
 			flushCommandQueue();
 		if(mSwapChain && settings.fullscreen)
 			mSwapChain->SetFullscreenState(FALSE, NULL);
-		if(feature)
-			NVSDK_NGX_D3D12_ReleaseFeature(feature);
+		if(mFeature)
+			NVSDK_NGX_D3D12_ReleaseFeature(mFeature);
 		if(settings.dlss)
 			NVSDK_NGX_D3D12_Shutdown();
+		nrd::DestroyInstance(*mDenoiser);
 	}
 
 	bool Window::initialize()
@@ -45,7 +46,12 @@ namespace RT
 		if(!settings.dlssSupported)
 			settings.dlss = DLSS_OFF;
 		phaseCount = settings.dlss ? (8 * (settings.width / settings.dlssWidth) * (settings.width / settings.dlssWidth)) : settings.RTAA;
+		createDLSSResources();
 		Logger::INFO.log("Initialized DLSS");
+
+		if(!initDenoiser())
+			return false;
+		Logger::INFO.log("Initialized Denoiser");
 
 		if(settings.fullscreen)
 		{
@@ -239,14 +245,14 @@ namespace RT
 			featureDesc.Feature.InTargetWidth = settings.width;
 			featureDesc.Feature.InTargetHeight = settings.height;
 			featureDesc.Feature.InPerfQualityValue = val;
-			featureDesc.InFeatureCreateFlags = (settings.backBufferFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ? NVSDK_NGX_DLSS_Feature_Flags_IsHDR : NVSDK_NGX_DLSS_Feature_Flags_None)
-												| NVSDK_NGX_DLSS_Feature_Flags_AutoExposure
-												| NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
+			featureDesc.InFeatureCreateFlags = NVSDK_NGX_DLSS_Feature_Flags_AutoExposure
+											 | NVSDK_NGX_DLSS_Feature_Flags_MVLowRes
+											 | NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
 		
 			ThrowIfFailed(mDirectCmdListAlloc->Reset());
 			ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
-			result = NGX_D3D12_CREATE_DLSS_EXT(mCommandList.Get(), 1, 1, &feature, params, &featureDesc);
+			result = NGX_D3D12_CREATE_DLSS_EXT(mCommandList.Get(), 1, 1, &mFeature, params, &featureDesc);
 
 			ThrowIfFailed(mCommandList->Close());
 			ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
@@ -254,8 +260,6 @@ namespace RT
 			
 			phaseCount = (int) (8 * ((float) settings.width / settings.dlssWidth) * ((float) settings.width / settings.dlssWidth));
 			flushCommandQueue();
-
-			createDLSSResources();
 		}
 		else
 			NVSDK_NGX_D3D12_Shutdown();
@@ -263,9 +267,193 @@ namespace RT
 
 	void Window::resetDLSSFeature()
 	{
-		if(feature)
-			NVSDK_NGX_D3D12_ReleaseFeature(feature);
+		if(mFeature)
+			NVSDK_NGX_D3D12_ReleaseFeature(mFeature);
 		initDLSSFeature();
+	}
+
+	bool Window::initDenoiser()
+	{
+		nrd::DenoiserDesc methodDesc = {};
+		methodDesc.denoiser = nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR;
+		methodDesc.renderWidth = settings.dlss ? settings.dlssWidth : settings.width;
+		methodDesc.renderHeight = settings.dlss ? settings.dlssHeight : settings.height;
+
+		nrd::InstanceCreationDesc desc = {};
+		desc.denoisersNum = 1;
+		desc.denoisers = &methodDesc;
+
+		if(nrd::CreateInstance(desc, mDenoiser) != nrd::Result::SUCCESS)
+			return false;
+		
+		nrd::ReblurSettings s = {};
+		s.hitDistanceReconstructionMode = nrd::HitDistanceReconstructionMode::AREA_3X3;
+		nrd::SetDenoiserSettings(*mDenoiser, 0, &s);
+
+		createDenoiserPipelines();
+		createDenoiserResources();
+		return true;
+	}
+
+	void Window::createDenoiserPipelines()
+	{
+		const nrd::InstanceDesc desc = nrd::GetInstanceDesc(*mDenoiser);
+
+		mDenoiserPipelines.clear();
+		mDenoiserRootSignatures.clear();
+		mDenoiserPipelines.resize(desc.pipelinesNum);
+		mDenoiserRootSignatures.resize(desc.pipelinesNum);
+
+		CD3DX12_DESCRIPTOR_RANGE samplers;
+		samplers.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, desc.samplersNum, desc.samplersBaseRegisterIndex, desc.samplersSpaceIndex);
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC computeDesc = {};
+		for(UINT32 i = 0; i < desc.pipelinesNum; ++i)
+		{
+			const nrd::PipelineDesc pipelineDesc = desc.pipelines[i];
+			std::vector<CD3DX12_DESCRIPTOR_RANGE> ranges(pipelineDesc.resourceRangesNum);
+
+			for(UINT32 j = 0; j < pipelineDesc.resourceRangesNum; ++j)
+			{
+				const nrd::ResourceRangeDesc rangeDesc = pipelineDesc.resourceRanges[j];
+				ranges[j].Init((rangeDesc.descriptorType == nrd::DescriptorType::TEXTURE) ? D3D12_DESCRIPTOR_RANGE_TYPE_SRV : D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+							   rangeDesc.descriptorsNum, rangeDesc.baseRegisterIndex);
+			}
+
+			CD3DX12_ROOT_PARAMETER rootParameter[3];
+			rootParameter[0].InitAsDescriptorTable(pipelineDesc.resourceRangesNum, ranges.data(), D3D12_SHADER_VISIBILITY_ALL);
+			rootParameter[1].InitAsDescriptorTable(1, &samplers, D3D12_SHADER_VISIBILITY_ALL);
+			rootParameter[2].InitAsConstantBufferView(desc.constantBufferRegisterIndex, desc.constantBufferSpaceIndex, D3D12_SHADER_VISIBILITY_ALL);
+			CD3DX12_ROOT_SIGNATURE_DESC sigDesc(3, rootParameter);
+
+			Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
+			Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+			HRESULT hr = D3D12SerializeRootSignature(&sigDesc, D3D_ROOT_SIGNATURE_VERSION_1, serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+			if(errorBlob != nullptr)
+				::OutputDebugStringA((char*) errorBlob->GetBufferPointer());
+			ThrowIfFailed(hr);
+
+			ThrowIfFailed(md3dDevice->CreateRootSignature(0, serializedRootSig->GetBufferPointer(), serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&mDenoiserRootSignatures[i])));
+
+			computeDesc.pRootSignature = mDenoiserRootSignatures[i].Get();
+			computeDesc.CS = {
+				pipelineDesc.computeShaderDXIL.bytecode,
+				pipelineDesc.computeShaderDXIL.size
+			};
+			ThrowIfFailed(md3dDevice->CreateComputePipelineState(&computeDesc, IID_PPV_ARGS(&mDenoiserPipelines[i])));
+		}
+	}
+
+	void Window::createDenoiserResources()
+	{
+		mDenoiserResources.clear();
+		mDenoiserResourcesHeaps.clear();
+
+		const nrd::InstanceDesc desc = nrd::GetInstanceDesc(*mDenoiser);
+		UINT32 poolSize = desc.permanentPoolSize + desc.transientPoolSize;
+		mDenoiserResources.resize(poolSize);
+		mDenoiserResourcesHeaps.resize(desc.descriptorPoolDesc.setsMaxNum);
+
+		//create constant buffer
+		int constantBufferViewSize = CalcConstantBufferByteSize(desc.constantBufferMaxDataSize);
+		int constantBufferSize = uint64_t(constantBufferViewSize) * desc.descriptorPoolDesc.setsMaxNum;
+		auto hp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+		auto rd = CD3DX12_RESOURCE_DESC::Buffer(constantBufferSize);
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &rd, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&mDenoiserCBV)));
+
+		D3D12_RESOURCE_DESC resDesc = {};
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resDesc.SampleDesc.Count = 1;
+		resDesc.SampleDesc.Quality = 0;
+		resDesc.DepthOrArraySize = 1;
+		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+		auto hpd = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+		for(UINT32 i = 0; i < poolSize; ++i)
+		{
+			//create textures
+			const nrd::TextureDesc& textureDesc = (i < desc.permanentPoolSize) ? desc.permanentPool[i] : desc.transientPool[i - desc.permanentPoolSize];
+
+			resDesc.Width = textureDesc.width;
+			resDesc.Height = textureDesc.height;
+			resDesc.MipLevels = textureDesc.mipNum;
+			resDesc.Format = denoiserToDX(textureDesc.format);
+
+			ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&mDenoiserResources[i])));
+		}
+
+		resDesc.Width = settings.dlss ? settings.dlssWidth : settings.width;
+		resDesc.Height = settings.dlss ? settings.dlssHeight : settings.height;
+		resDesc.MipLevels = 1;
+		resDesc.Format = settings.backBufferFormat;
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedTexture)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mAlbedoMap)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mSky)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedComposite)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedSpecular)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mSpecular)));
+
+		resDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mNormalRoughness)));
+
+		resDesc.Format = DXGI_FORMAT_R32_FLOAT;
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mZDepth)));
+
+		//dh creation
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+		heapDesc.NumDescriptors = desc.samplersNum;
+		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mDenoiserSamplerHeap)));
+
+		heapDesc.NumDescriptors = 25;
+		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		for(UINT32 i = 0; i < desc.descriptorPoolDesc.setsMaxNum; ++i)
+			ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mDenoiserResourcesHeaps[i])));
+
+		//allocate
+		D3D12_SAMPLER_DESC samplerDesc = {};
+		samplerDesc.MinLOD = 0;
+		samplerDesc.MaxAnisotropy = 16;
+		samplerDesc.MaxLOD = 16;
+		samplerDesc.MipLODBias = 0;
+		CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDenoiserSamplerHeap->GetCPUDescriptorHandleForHeapStart());
+		for(UINT32 i = 0; i < desc.samplersNum; ++i)
+		{
+			if(desc.samplers[i] == nrd::Sampler::NEAREST_CLAMP)
+			{
+				samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+				samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+				samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+				samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+			}
+			else if(desc.samplers[i] == nrd::Sampler::NEAREST_MIRRORED_REPEAT)
+			{
+				samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+				samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+				samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+				samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+			}
+			else if(desc.samplers[i] == nrd::Sampler::LINEAR_CLAMP)
+			{
+				samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+				samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+				samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+				samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+			}
+			else if(desc.samplers[i] == nrd::Sampler::LINEAR_MIRRORED_REPEAT)
+			{
+				samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+				samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+				samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+				samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+			}
+
+			md3dDevice->CreateSampler(&samplerDesc, hDescriptor);
+			hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+		}
 	}
 
 	void Window::createDLSSResources()
@@ -278,8 +466,8 @@ namespace RT
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
 		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-		resDesc.Width = settings.dlssWidth;
-		resDesc.Height = settings.dlssHeight;
+		resDesc.Width = settings.dlss ? settings.dlssWidth : settings.width;
+		resDesc.Height = settings.dlss ? settings.dlssHeight : settings.height;
 		resDesc.SampleDesc.Count = 1;
 		resDesc.SampleDesc.Quality = 0;
 		resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -494,28 +682,138 @@ namespace RT
 
 	void Window::DLSS(ID3D12Resource* outputResource, float jitterX, float jitterY, bool reset)
 	{
-		//float resolutionFactor = 1.1F - ((float) settings.dlssWidth / settings.width);
-
 		NVSDK_NGX_D3D12_DLSS_Eval_Params evalDesc = {};
 		evalDesc.Feature.pInColor = outputResource;
 		evalDesc.Feature.pInOutput = mResolvedBuffer.Get();
 		evalDesc.pInDepth = mDepthBuffer.Get();
 		evalDesc.pInMotionVectors = mMotionVectorBuffer.Get();
-		if(settings.dlss == DLSS_PERFORMANCE)
-		{
-			evalDesc.InJitterOffsetX = jitterX * 0.6F;
-			evalDesc.InJitterOffsetY = jitterY * 0.6F;
-		}
-		else
-		{
-			evalDesc.InJitterOffsetX = jitterX;
-			evalDesc.InJitterOffsetY = jitterY;
-		}
+		evalDesc.InJitterOffsetX = jitterX;
+		evalDesc.InJitterOffsetY = jitterY;
 		evalDesc.InRenderSubrectDimensions = { settings.dlssWidth, settings.dlssHeight };
 		evalDesc.InReset = reset ? 1 : 0;
 		evalDesc.InFrameTimeDeltaInMsec = mTimer.deltaTime();
 		
-		NGX_D3D12_EVALUATE_DLSS_EXT(mCommandList.Get(), feature, params, &evalDesc);
+		NGX_D3D12_EVALUATE_DLSS_EXT(mCommandList.Get(), mFeature, params, &evalDesc);
+	}
+
+	void Window::denoise(const nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource)
+	{
+		const nrd::InstanceDesc desc = nrd::GetInstanceDesc(*mDenoiser);
+		const nrd::DispatchDesc* dd;
+		uint32_t num;
+		nrd::Identifier i = 0;
+		nrd::GetComputeDispatches(*mDenoiser, &i, 1, dd, num);
+		nrd::SetCommonSettings(*mDenoiser, nrdSettings);
+
+		BYTE* cbvData;
+		mDenoiserCBV->Map(0, nullptr, reinterpret_cast<void**>(&cbvData));
+
+		int constantBufferViewSize = CalcConstantBufferByteSize(desc.constantBufferMaxDataSize);
+
+		for(UINT32 i = 0; i < num; ++i)
+		{
+			const nrd::DispatchDesc d = dd[i];
+
+			memcpy(&cbvData[i * constantBufferViewSize], d.constantBufferData, d.constantBufferDataSize);
+			CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDenoiserResourcesHeaps[i]->GetCPUDescriptorHandleForHeapStart());
+			for(UINT32 j = 0; j < d.resourcesNum; ++j)
+			{
+				DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+				ID3D12Resource* tex = nullptr;
+				
+				const nrd::ResourceDesc res = d.resources[j];
+				if(res.type == nrd::ResourceType::PERMANENT_POOL)
+				{
+					tex = mDenoiserResources[res.indexInPool].Get();
+					format = denoiserToDX(desc.permanentPool[res.indexInPool].format);
+				}
+				else if(res.type == nrd::ResourceType::TRANSIENT_POOL)
+				{
+					tex = mDenoiserResources[desc.permanentPoolSize + res.indexInPool].Get();
+					format = denoiserToDX(desc.transientPool[res.indexInPool].format);
+				}
+				else if(res.type == nrd::ResourceType::IN_MV)
+				{
+					tex = mMotionVectorBuffer.Get();
+					format = DXGI_FORMAT_R32G32_FLOAT;
+				}
+				else if(res.type == nrd::ResourceType::IN_VIEWZ)
+				{
+					tex = mZDepth.Get();
+					format = DXGI_FORMAT_R32_FLOAT;
+				}
+				else if(res.type == nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST)
+				{
+					tex = mDenoisedTexture.Get();
+					format = this->settings.backBufferFormat;
+				}
+				else if(res.type == nrd::ResourceType::OUT_VALIDATION)
+				{
+					tex = mDenoisedTexture.Get();
+					format = this->settings.backBufferFormat;
+				}
+				else if(res.type == nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST)
+				{
+					tex = outputResource;
+					format = this->settings.backBufferFormat;
+				}
+				else if(res.type == nrd::ResourceType::IN_NORMAL_ROUGHNESS)
+				{
+					tex = mNormalRoughness.Get();
+					format = DXGI_FORMAT_R10G10B10A2_UNORM;
+				}
+				else if(res.type == nrd::ResourceType::IN_BASECOLOR_METALNESS)
+				{
+					tex = mAlbedoMap.Get();
+					format = settings.backBufferFormat;
+				}
+				else if(res.type == nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST)
+				{
+					tex = mDenoisedSpecular.Get();
+					format = settings.backBufferFormat;
+				}
+				else if(res.type == nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST)
+				{
+					tex = mSpecular.Get();
+					format = settings.backBufferFormat;
+				}
+				else
+					throw std::exception("Unhandled reblur image");
+
+				if(res.stateNeeded == nrd::DescriptorType::TEXTURE)
+				{
+					D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+					srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+					srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+					srvDesc.Format = format;
+					srvDesc.Texture2D.PlaneSlice = 0;
+					srvDesc.Texture2D.MostDetailedMip = res.mipOffset;
+					srvDesc.Texture2D.MipLevels = res.mipNum;
+					md3dDevice->CreateShaderResourceView(tex, &srvDesc, hDescriptor);
+				}
+				else
+				{
+					D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+					uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+					uavDesc.Format = format;
+					md3dDevice->CreateUnorderedAccessView(tex, nullptr, &uavDesc, hDescriptor);
+				}
+
+				hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+			}
+
+			ID3D12DescriptorHeap* heaps[] = { mDenoiserResourcesHeaps[i].Get(), mDenoiserSamplerHeap.Get()};
+			mCommandList->SetDescriptorHeaps(2, heaps);
+			mCommandList->SetComputeRootSignature(mDenoiserRootSignatures[d.pipelineIndex].Get());
+
+			mCommandList->SetPipelineState(mDenoiserPipelines[d.pipelineIndex].Get());
+			mCommandList->SetComputeRootDescriptorTable(0, mDenoiserResourcesHeaps[i]->GetGPUDescriptorHandleForHeapStart());
+			mCommandList->SetComputeRootDescriptorTable(1, mDenoiserSamplerHeap->GetGPUDescriptorHandleForHeapStart());
+			mCommandList->SetComputeRootConstantBufferView(2, mDenoiserCBV->GetGPUVirtualAddress() + i * constantBufferViewSize);
+			mCommandList->Dispatch(d.gridWidth, d.gridHeight, 1);
+		}
+
+		mDenoiserCBV->Unmap(0, nullptr);
 	}
 
 	void Window::calculateFrameStats()
@@ -566,6 +864,15 @@ namespace RT
 		mCommandQueue->ExecuteCommandLists(1, cmdsList);
 
 		flushCommandQueue();
+
+		if(mFeature)
+			resetDLSSFeature();
+		createDLSSResources();
+		if(mDenoiser)
+		{
+			nrd::DestroyInstance(*mDenoiser);
+			initDenoiser();
+		}
 	}
 
 	void Window::flushCommandQueue()

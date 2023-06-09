@@ -7,8 +7,6 @@
 #include "../input/Keyboard.h"
 #include "../input/Mouse.h"
 
-#include <nvsdk_ngx_helpers.h>
-
 namespace RT
 {
 	class DLSSException: public std::exception
@@ -62,6 +60,7 @@ namespace RT
 		bool initMainWindow();
 		bool initDirectX12();
 		bool initDLSS();
+		bool initDenoiser();
 		void initDLSSFeature();
 		void resetDLSSFeature();
 
@@ -71,7 +70,10 @@ namespace RT
 		void calculateFrameStats();
 
 		void createDLSSResources();
+		void createDenoiserPipelines();
+		void createDenoiserResources();
 		void DLSS(ID3D12Resource* outputResource, float jitterX = 0.0F, float jitterY = 0.0F, bool reset = false);
+		void denoise(const nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource);
 
 		void createCommandObjects();
 		void createSwapChain();
@@ -99,7 +101,25 @@ namespace RT
 		Microsoft::WRL::ComPtr<ID3D12Resource> mMotionVectorBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mResolvedBuffer;
 
-		NVSDK_NGX_Handle* feature = nullptr;
+		//denoiser
+		nrd::Instance* mDenoiser;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12RootSignature>> mDenoiserRootSignatures;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12PipelineState>> mDenoiserPipelines;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> mDenoiserResources;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>> mDenoiserResourcesHeaps;
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDenoiserSamplerHeap;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoiserCBV;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedComposite;
+
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedTexture;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedSpecular;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mNormalRoughness;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mAlbedoMap;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mSky;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mZDepth;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mSpecular;
+
+		NVSDK_NGX_Handle* mFeature = nullptr;
 		NVSDK_NGX_Parameter* params = nullptr;
 
 		HINSTANCE mWindowInst = nullptr;

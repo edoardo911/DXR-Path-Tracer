@@ -18,8 +18,12 @@ namespace RT
 
 		inline DirectX::XMMATRIX getView() const { return DirectX::XMLoadFloat4x4(&mView); }
 		inline DirectX::XMMATRIX getProj() const { return DirectX::XMLoadFloat4x4(&mProj); }
+		inline DirectX::XMMATRIX getViewPrev() const { return DirectX::XMLoadFloat4x4(&mViewPrev); }
+		inline DirectX::XMMATRIX getProjPrev() const { return DirectX::XMLoadFloat4x4(&mProjPrev); }
 		inline DirectX::XMFLOAT4X4 getView4x4() const { return mView; }
 		inline DirectX::XMFLOAT4X4 getProj4x4() const { return mProj; }
+		inline DirectX::XMFLOAT4X4 getViewPrev4x4() const { return mViewPrev; }
+		inline DirectX::XMFLOAT4X4 getProjPrev4x4() const { return mProjPrev; }
 
 		inline DirectX::XMVECTOR getPos() const { return DirectX::XMLoadFloat3(&mPosition); }
 		inline DirectX::XMVECTOR getRight() const { return DirectX::XMLoadFloat3(&mRight); }
@@ -31,6 +35,7 @@ namespace RT
 		inline DirectX::XMFLOAT3 getLook3F() const { return mLook; }
 
 		inline void cleanView() { mViewDirty = false; }
+		void saveState();
 
 		inline float getNearZ() const { return mNearZ; }
 		inline float getFarZ() const { return mFarZ; }
@@ -71,5 +76,7 @@ namespace RT
 
 		DirectX::XMFLOAT4X4 mView = Identity4x4();
 		DirectX::XMFLOAT4X4 mProj = Identity4x4();
+		DirectX::XMFLOAT4X4 mViewPrev = Identity4x4();
+		DirectX::XMFLOAT4X4 mProjPrev = Identity4x4();
 	};
 };

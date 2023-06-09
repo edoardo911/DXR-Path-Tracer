@@ -22,6 +22,16 @@
 #include <dxgi1_4.h>
 #pragma comment(lib, "dxgi.lib")
 
+//DLSS
+#include <nvsdk_ngx_helpers.h>
+
+//denoiser
+#include <NRD.h>
+
+#include <NRDSettings.h>
+#include <NRDDescs.h>
+
+
 //standard libraries
 #include <unordered_map>
 #include <stdexcept>
@@ -39,10 +49,6 @@
 #include <array>
 #include <ppl.h>
 
-#include "settings.h"
-#include "d3dutil.h"
-#include "keys.h"
-
 //macros
 #ifndef ThrowIfFailed
 	#define ThrowIfFailed(x)													\
@@ -52,3 +58,8 @@
 		if(FAILED(hr__)) { throw RT::DxException(hr__, L#x, wfn, __LINE__); }	\
 	}
 #endif
+
+//engine libraries
+#include "settings.h"
+#include "d3dutil.h"
+#include "keys.h"

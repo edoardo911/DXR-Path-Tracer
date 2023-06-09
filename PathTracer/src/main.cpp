@@ -9,14 +9,17 @@
 #include "utils/TextureLoader.h"
 
 #include "rendering/FrameResource.h"
+#include "rendering/PostDenoise.h"
+#include "rendering/ColorAdjust.h"
+#include "rendering/Temporal.h"
 #include "rendering/Camera.h"
 
-#include "raytracing/TopLevelASGenerator.h"
-#include "raytracing/BottomLevelASGenerator.h"
-#include "raytracing/DXRHelper.h"
-#include "raytracing/RaytracingPipelineGenerator.h"
-#include "raytracing/RootSignatureGenerator.h"
 #include "raytracing/ShaderBindingTableGenerator.h"
+#include "raytracing/RaytracingPipelineGenerator.h"
+#include "raytracing/BottomLevelASGenerator.h"
+#include "raytracing/RootSignatureGenerator.h"
+#include "raytracing/TopLevelASGenerator.h"
+#include "raytracing/DXRHelper.h"
 
 using namespace RT;
 using namespace DirectX;
@@ -43,6 +46,7 @@ private:
 	void updateMainPassCB();
 	void updateObjCBs();
 	void updateMaterialCBs();
+	void updateDenoiser();
 
 	struct AccelerationStructureBuffers
 	{
@@ -68,7 +72,6 @@ private:
 	void createHitSignature(ID3D12RootSignature** pRootSig);
 	void createAOHitSignature(ID3D12RootSignature** pRootSig);
 	void createShadowHitSignature(ID3D12RootSignature** pRootSig);
-	void createPosHitSignature(ID3D12RootSignature** pRootSig);
 	void createRaytracingPipeline();
 	void createShaderBindingTable();
 
@@ -82,7 +85,8 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mHeap;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputResource[3];
+	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputResource;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mLastFrame;
 
 	std::unordered_map<std::string, std::unique_ptr<InstanceData>> mGeometries;
 	std::vector<std::unique_ptr<RaytracingInstance>> mRTInstances;
@@ -114,6 +118,12 @@ private:
 
 	int phase = 0;
 	XMFLOAT2 jitter = { 0, 0 };
+
+	nrd::CommonSettings nrdSettings = {};
+
+	std::unique_ptr<PostDenoise> postDenoise;
+	std::unique_ptr<ColorAdjust> colorAdjust;
+	std::unique_ptr<Temporal> temporal;
 };
 
 int CALLBACK WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance, _In_ PSTR cmdLine, _In_ int showCmd)
@@ -178,6 +188,18 @@ bool App::initialize()
 	if(!Window::initialize())
 		return false;
 
+	postDenoise = std::make_unique<PostDenoise>(md3dDevice.Get(), L"res/shaders/bin/post_denoise.cso");
+	colorAdjust = std::make_unique<ColorAdjust>(md3dDevice.Get(), L"res/shaders/bin/color_adjust.cso");
+	temporal = std::make_unique<Temporal>(md3dDevice.Get(), L"res/shaders/bin/temporal.cso", getStaticSamplers().data());
+
+	ColorAdjust::Data data;
+	data.brightness = 0.0F;
+	data.contrast = 1.0F;
+	data.exposure = 1.0F;
+	data.saturation = 1.0F;
+	data.gamma = 2.2F;
+	colorAdjust->setData(data);
+
 	ThrowIfFailed(mDirectCmdListAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
@@ -220,6 +242,7 @@ bool App::initialize()
 		toggleCursor(false);
 	mouse.setPos(settings.width / 2, settings.height / 2);
 	centerCursor();
+
 	Logger::INFO.log("Initialization has succeeded. Starting game loop...");
 	return true;
 }
@@ -321,17 +344,17 @@ void App::buildMaterials()
 	redBall->DiffuseAlbedo = { 1.0F, 0.0F, 0.0F, 0.2F };
 	redBall->matCBIndex = 1;
 	redBall->Roughness = 0.05F;
-	redBall->refractionIndex = 0.4F;
+	redBall->refractionIndex = 0.9F;
 	mMaterials.push_back(std::move(redBall));
 
 	auto wall = std::make_unique<Material>();
-	wall->DiffuseAlbedo = { 0.0F, 1.0F, 0.0F, 1.0F };
+	wall->DiffuseAlbedo = { 0.0F, 1.0F, 1.0F, 1.0F };
 	wall->matCBIndex = 2;
 	wall->Roughness = 0.2F;
 	mMaterials.push_back(std::move(wall));
 
 	auto metallicBall = std::make_unique<Material>();
-	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.1F };
+	//metallicBall->DiffuseAlbedo = { 1.0F, 1.0F, 1.0F, 0.3F };
 	metallicBall->metallic = 0.8F;
 	metallicBall->matCBIndex = 3;
 	metallicBall->Roughness = 0.3F;
@@ -353,14 +376,11 @@ void App::buildOutputResource()
 	resDesc.MipLevels = 1;
 
 	auto hp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, settings.dlss ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS : D3D12_RESOURCE_STATE_COPY_SOURCE,
-				  nullptr, IID_PPV_ARGS(&mOutputResource[0])));
-
-	resDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mOutputResource[1])));
-
-	resDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mOutputResource[2])));
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, settings.dlss ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS : D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(&mOutputResource)));
+	
+	resDesc.Width = settings.width;
+	resDesc.Height = settings.height;
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&mLastFrame)));
 }
 
 App::AccelerationStructureBuffers App::createBottomLevelAS(const std::vector<std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, UINT32>>& vVertexBuffers,
@@ -386,6 +406,7 @@ void App::createTopLevelAS(const std::vector<std::tuple<Microsoft::WRL::ComPtr<I
 	{
 		const auto& [res, world, type] = instances[i];
 		mTopLevelASGenerator.AddInstance(res.Get(), world, static_cast<UINT>(i), static_cast<UINT>(i * 4), 0xFF);
+		mRTInstances[i]->objCBOffset = (UINT) i;
 	}
 
 	UINT64 scratchSize, resultSize, instanceDescsSize;
@@ -417,14 +438,15 @@ void App::createRayGenSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddHeapRangesParameter({ { 0, 5, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 2, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5 } });
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
+	rsc.AddHeapRangesParameter({ { 0, 8, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8 } });
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
 void App::createMissSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 } });
+	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 12 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -439,11 +461,11 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0, 1);
-	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6 } });
+	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1, 1);
+	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -451,20 +473,10 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 void App::createAOHitSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2 } });
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
 void App::createShadowHitSignature(ID3D12RootSignature** pRootSig)
-{
-	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
-	rsc.Generate(md3dDevice.Get(), true, pRootSig);
-}
-
-void App::createPosHitSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0);
@@ -497,7 +509,7 @@ void App::createRaytracingPipeline()
 	createHitSignature(&mSignatures["closestHit"]);
 	createAOHitSignature(&mSignatures["aoClosestHit"]);
 	createShadowHitSignature(&mSignatures["shadowClosestHit"]);
-	createPosHitSignature(&mSignatures["posClosestHit"]);
+	createAOHitSignature(&mSignatures["posClosestHit"]);
 
 	pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
 	pipeline.AddHitGroup(L"AOHitGroup", L"AOClosestHit");
@@ -512,7 +524,7 @@ void App::createRaytracingPipeline()
 	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["posClosestHit"].Get(), { L"PosHitGroup" });
 
-	pipeline.SetMaxPayloadSize(4 * sizeof(float) + 1 * sizeof(UINT));
+	pipeline.SetMaxPayloadSize(17 * sizeof(float) + 1 * sizeof(UINT));
 	pipeline.SetMaxAttributeSize(2 * sizeof(float));
 	pipeline.SetMaxRecursionDepth(4);
 
@@ -525,39 +537,36 @@ void App::createShaderBindingTable()
 	D3D12_GPU_DESCRIPTOR_HANDLE heapHandle = mHeap->GetGPUDescriptorHandleForHeapStart();
 
 	UINT64* heapPointer = reinterpret_cast<UINT64*>(heapHandle.ptr);
-	UINT objCBSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
 	for(int j = 0; j < NUM_FRAME_RESOURCES; ++j)
 	{
 		mSBTHelper.Reset();
-		mSBTHelper.AddRayGenerationProgram(L"RayGen", { (void*) mFrameResources[j]->passCB->resource()->GetGPUVirtualAddress(), heapPointer });
-		mSBTHelper.AddMissProgram(L"Miss", {});
+		mSBTHelper.AddRayGenerationProgram(L"RayGen", {
+			(void*) mFrameResources[j]->passCB->resource()->GetGPUVirtualAddress(),
+			(void*) mFrameResources[j]->objCB->resource()->GetGPUVirtualAddress(),
+			heapPointer
+		});
+		mSBTHelper.AddMissProgram(L"Miss", { heapPointer });
 		mSBTHelper.AddMissProgram(L"ShadowMiss", {});
 		mSBTHelper.AddMissProgram(L"AOMiss", {});
 		mSBTHelper.AddMissProgram(L"PosMiss", {});
 
-		for(auto& i : mRTInstances)
+		for(auto& i:mRTInstances)
 		{
-			auto objCB = mFrameResources[j]->objCB->resource();
-			D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCB->GetGPUVirtualAddress() + i->objCBOffset * objCBSize;
-
 			mSBTHelper.AddHitGroup(L"HitGroup", {
 									(void*) mFrameResources[j]->passCB->resource()->GetGPUVirtualAddress(),
-									(void*) objCBAddress,
-									(void*) (i->buffers->vertexBuffer->GetGPUVirtualAddress()),
-									(void*) (i->buffers->indexBuffer->GetGPUVirtualAddress()),
-									(void*) (mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress()),
+									(void*) i->buffers->vertexBuffer->GetGPUVirtualAddress(),
+									(void*) i->buffers->indexBuffer->GetGPUVirtualAddress(),
+									(void*) mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress(),
+									(void*) mFrameResources[j]->objCB->resource()->GetGPUVirtualAddress(),
 									heapPointer
 								   });
 			mSBTHelper.AddHitGroup(L"ShadowHitGroup", {
-									(void*) objCBAddress,
-									(void*) (mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress())
+									(void*) mFrameResources[j]->matCB->resource()->GetGPUVirtualAddress(),
+									(void*) mFrameResources[j]->objCB->resource()->GetGPUVirtualAddress()
 								   });
 			mSBTHelper.AddHitGroup(L"AOHitGroup", {});
-			mSBTHelper.AddHitGroup(L"PosHitGroup", {
-									(void*) (i->buffers->vertexBuffer->GetGPUVirtualAddress()),
-									(void*) (i->buffers->indexBuffer->GetGPUVirtualAddress()),
-								   });
+			mSBTHelper.AddHitGroup(L"PosHitGroup", {});
 		}
 
 		UINT32 sbtSize0 = mSBTHelper.ComputeSBTSize();
@@ -590,14 +599,14 @@ void App::loadTextures()
 void App::buildDescriptorHeap()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = 10;
+	heapDesc.NumDescriptors = 13;
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
 	allocateOutputResources();
-	hDescriptor.Offset(5, mCbvSrvUavDescriptorSize);
+	hDescriptor.Offset(8, mCbvSrvUavDescriptorSize);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -643,23 +652,63 @@ void App::allocateOutputResources()
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
 
-	//output buffer and accumulation buffer
+	//output buffer and other things
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
-	md3dDevice->CreateUnorderedAccessView(mOutputResource[0].Get(), nullptr, &uavDesc, hDescriptor);
+	md3dDevice->CreateUnorderedAccessView(mOutputResource.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateUnorderedAccessView(mOutputResource[1].Get(), nullptr, &uavDesc, hDescriptor);
+	md3dDevice->CreateUnorderedAccessView(mNormalRoughness.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	md3dDevice->CreateUnorderedAccessView(mOutputResource[2].Get(), nullptr, &uavDesc, hDescriptor);
+	md3dDevice->CreateUnorderedAccessView(mDepthBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	if(settings.dlss)
-	{
-		md3dDevice->CreateUnorderedAccessView(mDepthBuffer.Get(), nullptr, &uavDesc, hDescriptor);
-		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-		md3dDevice->CreateUnorderedAccessView(mMotionVectorBuffer.Get(), nullptr, &uavDesc, hDescriptor);
-		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
-	}
+	md3dDevice->CreateUnorderedAccessView(mMotionVectorBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mZDepth.Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mSpecular.Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mSky.Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mAlbedoMap.Get(), nullptr, &uavDesc, hDescriptor);
+
+	//post denoising heap
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.PlaneSlice = 0;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Format = settings.backBufferFormat;
+	srvDesc.Texture2D.MipLevels = 1;
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE pdHandle(postDenoise->getHeapStart());
+	md3dDevice->CreateShaderResourceView(mDenoisedTexture.Get(), &srvDesc, pdHandle);
+	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateShaderResourceView(mDenoisedSpecular.Get(), &srvDesc, pdHandle);
+	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateShaderResourceView(mSky.Get(), &srvDesc, pdHandle);
+	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateShaderResourceView(mAlbedoMap.Get(), &srvDesc, pdHandle);
+	pdHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mDenoisedComposite.Get(), nullptr, &uavDesc, pdHandle);
+
+	//taa heap
+	CD3DX12_CPU_DESCRIPTOR_HANDLE taaHandle(temporal->getHeapStart());
+	md3dDevice->CreateShaderResourceView(mDenoisedComposite.Get(), &srvDesc, taaHandle);
+	taaHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateShaderResourceView(mLastFrame.Get(), &srvDesc, taaHandle);
+	taaHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	md3dDevice->CreateShaderResourceView(mDepthBuffer.Get(), &srvDesc, taaHandle);
+	taaHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	srvDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+	md3dDevice->CreateShaderResourceView(mMotionVectorBuffer.Get(), &srvDesc, taaHandle);
+	taaHandle.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mResolvedBuffer.Get(), nullptr, &uavDesc, taaHandle);
+
+	//color adjust heap
+	CD3DX12_CPU_DESCRIPTOR_HANDLE caHandle(colorAdjust->getHeapStart());
+	md3dDevice->CreateUnorderedAccessView(mResolvedBuffer.Get(), nullptr, &uavDesc, caHandle);
 }
 
 void App::buildFrameResources()
@@ -676,6 +725,9 @@ void App::update()
 	mCurrFrameResource = mFrameResources[mCurrFrameResourceIndex].get();
 
 	mFrameInExecution = mCurrFrameResource->fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->fence;
+
+	//if(mMainPassCB.frameIndex > 63)
+	//	mMainPassCB.frameIndex = 0;
 	
 	if(!mFrameInExecution)
 	{
@@ -689,6 +741,7 @@ void App::update()
 		updateMainPassCB();
 		updateObjCBs();
 		updateMaterialCBs();
+		updateDenoiser();
 	}
 }
 
@@ -699,11 +752,10 @@ void App::draw()
 	ThrowIfFailed(mCurrFrameResource->cmdListAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(mCurrFrameResource->cmdListAlloc.Get(), nullptr));
 
-	D3D12_RESOURCE_BARRIER barriers[] = {
-		CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST),
-		CD3DX12_RESOURCE_BARRIER::Transition(mOutputResource[0].Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
-	};
-	mCommandList->ResourceBarrier(settings.dlss ? 1 : 2, barriers);
+	D3D12_RESOURCE_BARRIER barriers[3];
+	barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST),
+
+	mCommandList->ResourceBarrier(1, barriers);
 
 	ID3D12DescriptorHeap* heaps[] = { mHeap.Get() };
 	mCommandList->SetDescriptorHeaps(1, heaps);
@@ -733,28 +785,38 @@ void App::draw()
 	mCommandList->SetPipelineState1(mRtStateObject.Get());
 	mCommandList->DispatchRays(&desc);
 
-	if(settings.dlss)
-		DLSS(mOutputResource[0].Get(), jitter.x, jitter.y);
-	if(settings.dlss || settings.RTAA > 1)
-		phase = (phase + 1) % phaseCount;
+	denoise(nrdSettings, mOutputResource.Get());
+	
+	postDenoise->dispatch(mCommandList.Get(), settings.dlss ? settings.dlssWidth : settings.width, settings.dlss ? settings.dlssHeight : settings.height);
 
 	if(settings.dlss)
-	{
-		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		mCommandList->ResourceBarrier(1, barriers);
-		mCommandList->CopyResource(currentBackBuffer(), mResolvedBuffer.Get());
-		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
-		barriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		mCommandList->ResourceBarrier(2, barriers);
-	}
+		DLSS(mDenoisedComposite.Get(), jitter.x, jitter.y);
 	else
 	{
-		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mOutputResource[0].Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		mCommandList->ResourceBarrier(1, barriers);
-		mCommandList->CopyResource(currentBackBuffer(), mOutputResource[0].Get());
-		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
-		mCommandList->ResourceBarrier(1, barriers);
+		temporal->dispatch(mCommandList.Get(), settings.width, settings.height);
+
+		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		barriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(mLastFrame.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+		mCommandList->ResourceBarrier(2, barriers);
+		mCommandList->CopyResource(mLastFrame.Get(), mResolvedBuffer.Get());
+		barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		barriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(mLastFrame.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+		mCommandList->ResourceBarrier(2, barriers);
 	}
+
+	colorAdjust->dispatch(mCommandList.Get(), settings.width, settings.height);
+	
+	if(settings.RTAA > 1 && !settings.dlss)
+		phase = (phase + 1) % settings.RTAA;
+	else if(settings.dlss)
+		phase = (phase + 1) % phaseCount;
+
+	barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	mCommandList->ResourceBarrier(1, barriers);
+	mCommandList->CopyResource(currentBackBuffer(), mResolvedBuffer.Get());
+	barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(currentBackBuffer(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+	barriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(mResolvedBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	mCommandList->ResourceBarrier(2, barriers);
 
 	ThrowIfFailed(mCommandList->Close());
 
@@ -768,18 +830,25 @@ void App::draw()
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 
 	mMainPassCB.frameIndex++;
+	mCam->saveState();
 }
 
 void App::updateMainPassCB()
 {
+	XMMATRIX viewPrev = mCam->getViewPrev();
+	XMMATRIX projPrev = mCam->getProjPrev();
+	XMMATRIX viewProjPrev = XMMatrixMultiply(viewPrev, projPrev);
+	XMStoreFloat4x4(&mMainPassCB.viewProjPrev, XMMatrixTranspose(viewProjPrev));
+
+	mMainPassCB.jitter = jitter;
+
 	if(mCam->isDirty())
 	{
 		mCam->cleanView();
-		mMainPassCB.frameIndex = 1;
 
 		XMMATRIX view = mCam->getView();
+		XMStoreFloat4x4(&mMainPassCB.view, XMMatrixTranspose(view));
 
-		XMFLOAT4X4 PROJ = mCam->getProj4x4();
 		XMMATRIX proj = mCam->getProj();
 
 		XMVECTOR viewDet = XMMatrixDeterminant(view);
@@ -799,8 +868,6 @@ void App::updateMainPassCB()
 			mMainPassCB.LODOffset = log2f((float) settings.dlssWidth / settings.width) - 1.0F;
 	}
 
-	mMainPassCB.jitter = jitter;
-
 	mCurrFrameResource->passCB->copyData(0, mMainPassCB);
 }
 
@@ -812,6 +879,7 @@ void App::updateObjCBs()
 		{
 			ObjectConstants objCB;
 			XMStoreFloat4x4(&objCB.world, XMMatrixTranspose(e->world));
+			XMStoreFloat4x4(&objCB.toPrevWorld, XMMatrixTranspose(e->worldPrev));
 			objCB.materialIndex = e->matOffset;
 			objCB.diffuseIndex = e->texOffset;
 			objCB.normalIndex = e->normalOffset;
@@ -843,18 +911,42 @@ void App::updateMaterialCBs()
 	}
 }
 
+void App::updateDenoiser()
+{
+	for(int i = 0; i < 4; ++i)
+	{
+		for(int j = 0; j < 4; ++j)
+		{
+			nrdSettings.viewToClipMatrix[i * 4 + j] = mCam->getProj4x4()(i, j);
+			nrdSettings.viewToClipMatrixPrev[i * 4 + j] = mCam->getProjPrev4x4()(i, j);
+			nrdSettings.worldToViewMatrix[i * 4 + j] = mCam->getView4x4()(i, j);
+			nrdSettings.worldToViewMatrixPrev[i * 4 + j] = mCam->getViewPrev4x4()(i, j);
+		}
+	}
+
+	nrdSettings.cameraJitter[0] = jitter.x;
+	nrdSettings.cameraJitter[1] = jitter.y;
+	nrdSettings.inputSubrectOrigin[0] = 0;
+	nrdSettings.inputSubrectOrigin[1] = 0;
+	nrdSettings.frameIndex = mMainPassCB.frameIndex;
+	nrdSettings.disocclusionThreshold = 0.05F;
+	nrdSettings.enableValidation = false;
+	nrdSettings.splitScreen = 0.0F;
+	nrdSettings.denoisingRange = 9000;
+	nrdSettings.isMotionVectorInWorldSpace = false;
+	nrdSettings.motionVectorScale[0] = 1.0F / (settings.dlss ? settings.dlssWidth : settings.width);
+	nrdSettings.motionVectorScale[1] = 1.0F / (settings.dlss ? settings.dlssHeight : settings.height);
+	nrdSettings.motionVectorScale[2] = 0.0F;
+}
+
 void App::onResize()
 {
 	Window::onResize();
 
 	mCam->setLens(0.25F * XM_PI, aspectRatio(), 0.01F, 10000.0F);
-	mMainPassCB.frameIndex = 1;
 
-	if(mOutputResource[0])
+	if(mOutputResource)
 	{
-		if(settings.dlss)
-			resetDLSSFeature();
-
 		buildOutputResource();
 		allocateOutputResources();
 	}
@@ -890,8 +982,7 @@ void App::keyboardInput()
 	}
 
 	if(keyboard.isKeyDown(VK_SPACE))
-		mMainPassCB.frameIndex = 1;
-
+		mMainPassCB.frameIndex = 1; //TODO reset denoiser & DLSS
 	if(keyboard.isKeyPressed(VK_F11))
 		toggleFullscreen();
 }

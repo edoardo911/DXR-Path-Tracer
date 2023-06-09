@@ -36,6 +36,8 @@ namespace RT
 
 	struct MainPass
 	{
+		DirectX::XMFLOAT4X4 view;
+		DirectX::XMFLOAT4X4 viewProjPrev;
 		DirectX::XMFLOAT4X4 invView;
 		DirectX::XMFLOAT4X4 invProj;
 		float fov;
@@ -43,13 +45,14 @@ namespace RT
 		float nearPlane;
 		float farPlane;
 		float LODOffset = 0;
-		UINT32 frameIndex = 1;
+		UINT32 frameIndex = 0;
 		DirectX::XMFLOAT2 jitter;
 	};
 
 	struct ObjectConstants
 	{
 		DirectX::XMFLOAT4X4 world;
+		DirectX::XMFLOAT4X4 toPrevWorld;
 		INT32 diffuseIndex;
 		INT32 normalIndex;
 		UINT32 materialIndex;
