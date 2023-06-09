@@ -5,9 +5,12 @@ https://developer.nvidia.com/rtx/raytracing/dxr/DX12-Raytracing-tutorial-Part-1
 https://developer.nvidia.com/rtx/raytracing/dxr/dx12-raytracing-tutorial-part-2
 
 # DLSS
-DLSS has been implemented following NVIDIA's guidelines
+**DLSS** has been implemented following NVIDIA's guidelines
 https://github.com/NVIDIA/DLSS/blob/main/doc/DLSS_Programming_Guide_Release.pdf
 
 # Denoising
-The application uses NRD to denoise both diffuse and specular signals.
+The application uses **NRD** to denoise both diffuse and specular signals.
 https://github.com/NVIDIAGameWorks/RayTracingDenoiser
+
+![Final Result](result.PNG)
+![Denoised](denoise.jpeg)
