@@ -86,9 +86,9 @@ float computeTextureLOD(uint2 size, float3 d, float t)
 #endif
 }
 
-float3 calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
+float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
 {
-    float3 shadowFactor = float3(1.0, 1.0, 1.0);
+    float shadowDistance = 65504;
     float distanceToLight = 0;
     
     if(light.Type == LIGHT_TYPE_DIRECTIONAL)
@@ -107,11 +107,11 @@ float3 calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         ShadowHitInfo shadowPayload;
         shadowPayload.occlusion = 1.0F;
         shadowPayload.distance = 0.01F;
-        if(dot(ray.Direction, normal) > 0.0F)
+        //if(dot(ray.Direction, normal) > 0.0F)
         {
-            TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, ray, shadowPayload);
+            TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance > 0.0F)
-                shadowFactor = 1.0F - (clamp(shadowPayload.distance / maxDist, shadowPayload.occlusion, 1.0F));
+                shadowDistance = shadowPayload.distance;
         }
     }
     else if(light.Type == LIGHT_TYPE_POINTLIGHT)
@@ -130,11 +130,11 @@ float3 calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         ShadowHitInfo shadowPayload;
         shadowPayload.occlusion = 1.0F;
         shadowPayload.distance = 0.01F;
-        if(dot(ray.Direction, normal) > 0.0F)
+        //if(dot(ray.Direction, normal) > 0.0F)
         {
-            TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, ray, shadowPayload);
+            TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance > 0.0F)
-                shadowFactor = 1.0F - (clamp(shadowPayload.distance / maxDist, shadowPayload.occlusion, 1.0F));
+                shadowDistance = shadowPayload.distance;
         }
     }
     else if(light.Type == LIGHT_TYPE_SPOTLIGHT)
@@ -153,15 +153,15 @@ float3 calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         ShadowHitInfo shadowPayload;
         shadowPayload.occlusion = 1.0F;
         shadowPayload.distance = 0.01F;
-        if(dot(ray.Direction, normal) > 0.0F)
+        //if(dot(ray.Direction, normal) > 0.0F)
         {
-            TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 1, ray, shadowPayload);
+            TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance > 0.0F)
-                shadowFactor = 1.0F - (clamp(shadowPayload.distance / maxDist, shadowPayload.occlusion, 1.0F));
+                shadowDistance = shadowPayload.distance;
         }
     }
     
-    return shadowFactor;
+    return shadowDistance;
 }
 
 float3 calcIndirectLight(Light light, float4 diffuseAlbedo, float3 norm, Material material, float3 worldOrigin)
@@ -230,36 +230,36 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     tangent = normalize(mul(tangent, (float3x3) objectData.world));
     
     uint seed = initRand(DispatchRaysIndex().x * gFrameIndex, DispatchRaysIndex().y * gFrameIndex, 16);
-    uint chosenLight = floor(nextRand(seed) * (NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS));
+    uint chosenLight = floor(nextRand(seed) * (NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS)); //TODO importance sampling
     
     Material material = gMaterials[objectData.matIndex];
     
     //light
     Light gLights[MAX_LIGHTS];
 #if USE_LIGHT == 0
-    gLights[0].Strength = float3(1.0F, 1.0F, 1.0F);
+    gLights[0].Strength = float3(1.0, 1.0, 1.0);
 #elif USE_LIGHT == 1
-    gLights[0].Strength = float3(0.2F, 0.3F, 1.0F) * 2;
+    gLights[0].Strength = float3(0.2, 0.3, 1.0) * 2;
 #elif USE_LIGHT == 2
-    gLights[0].Strength = float3(1.0F, 0.8F, 0.5F);
+    gLights[0].Strength = float3(1.0, 0.8, 0.5);
 #elif USE_LIGHT == 3
-    gLights[0].Strength = float3(0.75F, 0.9F, 1.0F);
+    gLights[0].Strength = float3(0.75, 0.9, 1.0);
 #endif
-    gLights[0].Direction = float3(0.0F, -1.0F, 0.0F);
-    gLights[0].Position = float3(-2.0F, 2.45F, -1.0F);
-    gLights[0].FalloffStart = 0.01F;
-    gLights[0].FalloffEnd = 10.0F;
-    gLights[0].SpotPower = 1.0F;
-    gLights[0].Radius = 0.15F;
+    gLights[0].Direction = float3(0.0, -1.0, 0.0);
+    gLights[0].Position = float3(-2.0, 2.45, -1.0);
+    gLights[0].FalloffStart = 0.01;
+    gLights[0].FalloffEnd = 10.0;
+    gLights[0].SpotPower = 1.0;
+    gLights[0].Radius = 0.15;
     gLights[0].Type = LIGHT_TYPE_SPOTLIGHT;
     
-    gLights[1].Strength = float3(1.0F, 0.0F, 1.0F);
-    gLights[1].Direction = float3(0.0F, -1.0F, 0.0F);
-    gLights[1].Position = float3(1.7F, 2.45F, -1.0F);
-    gLights[1].FalloffStart = 0.01F;
-    gLights[1].FalloffEnd = 10.0F;
-    gLights[1].SpotPower = 1.0F;
-    gLights[1].Radius = 0.15F;
+    gLights[1].Strength = float3(1.0, 0.0, 1.0);
+    gLights[1].Direction = float3(0.0, -1.0, 0.0);
+    gLights[1].Position = float3(1.7, 2.45, -1.0);
+    gLights[1].FalloffStart = 0.01;
+    gLights[1].FalloffEnd = 10.0;
+    gLights[1].SpotPower = 1.0;
+    gLights[1].Radius = 0.0;
     gLights[1].Type = LIGHT_TYPE_SPOTLIGHT;
     
     //global vars
@@ -332,20 +332,18 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         hitColor.a = aoPayload.hitT;
     
     //shadows
-    float3 shadowFactor = float3(0.0, 0.0, 0.0);
-    for(int i = 0; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
-        shadowFactor += calcShadow(gLights[i], worldOrigin, norm, seed);
-    shadowFactor /= NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS;
+    float shadowDistance = 0.0;
+    shadowDistance = calcShadow(gLights[0], worldOrigin, norm, seed);
     
     //blinn phong
     const float shininess = max(1.0F - material.roughness, 0.01F);
     LightMaterial mat = { diffuseAlbedo, material.fresnelR0, shininess };
     float3 specAlbedo;
-    float4 directLight = float4(shadowFactor, 1.0) * ComputeLighting(gLights[chosenLight], mat, worldOrigin, norm, -WorldRayDirection(), specAlbedo);
+    float4 directLight = ComputeLighting(gLights[chosenLight], mat, worldOrigin, norm, -WorldRayDirection(), specAlbedo);
     
     hitColor.rgb += directLight.rgb * diffuseAlbedo.rgb;
     hitColor.rgb += indirectLight * diffuseAlbedo.rgb;
-    if(shadowFactor.x == 1.0)
+    if(shadowDistance == 0.0)
         payload.specularAndDistance.rgb = specAlbedo;
     
     //reflections
@@ -443,7 +441,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     if(payload.recursionDepth > 1)
     {
         hitColor.rgb += payload.specularAndDistance.rgb;
-        //hitColor.a = RayTCurrent();
+        hitColor.a = RayTCurrent();
     }
     
     if(material.metallic == 1.0 || material.diffuseAlbedo.a == 0.0)
@@ -453,4 +451,5 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     payload.albedoAndZ = float4(mapColor.rgb, mul(float4(worldOrigin, 1.0), gView).z);
     if(material.roughness >= 0.05)
         payload.virtualZ = payload.albedoAndZ.w;
+    payload.shadow = float2(shadowDistance, tan(gLights[0].Radius * 0.5));
 }

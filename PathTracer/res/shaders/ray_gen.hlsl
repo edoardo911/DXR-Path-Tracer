@@ -27,6 +27,7 @@ RWTexture2D<float> gZDepth: register(u4);
 RWTexture2D<float4> gSpecularMap: register(u5);
 RWTexture2D<float4> gSky: register(u6);
 RWTexture2D<float4> gAlbedoAndMetalness: register(u7);
+RWTexture2D<float2> gShadowData: register(u8);
 
 RaytracingAccelerationStructure SceneBVH: register(t0);
 StructuredBuffer<ObjectData> gData: register(t1);
@@ -54,6 +55,7 @@ void RayGen()
     payload.albedoAndZ = float4(0, 0, 0, -1);
     payload.virtualZ = -1;
     payload.recursionDepth = 1;
+    payload.shadow = float2(NRD_FP16_MAX, 0);
     
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
     
@@ -102,4 +104,5 @@ void RayGen()
     else
         gSky[launchIndex] = 0;
     gAlbedoAndMetalness[launchIndex] = float4(payload.albedoAndZ.rgb, 1);
+    gShadowData[launchIndex] = SIGMA_FrontEnd_PackShadow(z, payload.shadow.x, payload.shadow.y);
 }

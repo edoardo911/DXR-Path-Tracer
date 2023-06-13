@@ -18,6 +18,7 @@ struct HitInfo
     float4 specularAndDistance;
     float4 normalAndRough;
     float4 albedoAndZ;
+    float2 shadow;
     float virtualZ;
     uint recursionDepth;
 };
