@@ -440,14 +440,14 @@ void App::createRayGenSignature(ID3D12RootSignature** pRootSig)
 	nv_helpers_dx12::RootSignatureGenerator rsc;
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
-	rsc.AddHeapRangesParameter({ { 0, 9, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 } });
+	rsc.AddHeapRangesParameter({ { 0, 10, 0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0 }, { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10 } });
 	rsc.Generate(md3dDevice.Get(), true, pRootSig);
 }
 
 void App::createMissSignature(ID3D12RootSignature** pRootSig)
 {
 	nv_helpers_dx12::RootSignatureGenerator rsc;
-	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 13 } });
+	rsc.AddHeapRangesParameter({ { 0, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 14 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -466,7 +466,7 @@ void App::createHitSignature(ID3D12RootSignature** pRootSig)
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0, 1);
 	rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1, 1);
-	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10 } });
+	rsc.AddHeapRangesParameter({ { 2, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10 }, { 3, 3, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 11 } });
 	auto s = getStaticSamplers();
 	rsc.Generate(md3dDevice.Get(), true, pRootSig, (UINT) s.size(), s.data());
 }
@@ -525,7 +525,7 @@ void App::createRaytracingPipeline()
 	pipeline.AddRootSignatureAssociation(mSignatures["shadowClosestHit"].Get(), { L"ShadowHitGroup" });
 	pipeline.AddRootSignatureAssociation(mSignatures["posClosestHit"].Get(), { L"PosHitGroup" });
 
-	pipeline.SetMaxPayloadSize(19 * sizeof(float) + 1 * sizeof(UINT));
+	pipeline.SetMaxPayloadSize(23 * sizeof(float) + 1 * sizeof(UINT));
 	pipeline.SetMaxAttributeSize(2 * sizeof(float));
 	pipeline.SetMaxRecursionDepth(4);
 
@@ -600,14 +600,14 @@ void App::loadTextures()
 void App::buildDescriptorHeap()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = 14;
+	heapDesc.NumDescriptors = 15;
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&mHeap)));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mHeap->GetCPUDescriptorHandleForHeapStart());
 	allocateOutputResources();
-	hDescriptor.Offset(9, mCbvSrvUavDescriptorSize);
+	hDescriptor.Offset(10, mCbvSrvUavDescriptorSize);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -674,6 +674,8 @@ void App::allocateOutputResources()
 	md3dDevice->CreateUnorderedAccessView(mAlbedoMap.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 	md3dDevice->CreateUnorderedAccessView(mShadowData.Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateUnorderedAccessView(mShadowTranslucency.Get(), nullptr, &uavDesc, hDescriptor);
 
 	//post denoising heap
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;

@@ -1,6 +1,10 @@
 #include "common.hlsli"
 #include "path_tracing_utils.hlsli"
 
+#define NRD_NORMAL_ENCODING 2
+#define NRD_ROUGHNESS_ENCODING 1
+#include "include/NRD.hlsli"
+
 StructuredBuffer<Vertex> vertices: register(t0);
 StructuredBuffer<int> indices: register(t1);
 StructuredBuffer<Material> gMaterials: register(t0, space1);
@@ -88,7 +92,7 @@ float computeTextureLOD(uint2 size, float3 d, float t)
 
 float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
 {
-    float shadowDistance = 65504;
+    float shadowDistance = NRD_FP16_MAX;
     float distanceToLight = 0;
     
     if(light.Type == LIGHT_TYPE_DIRECTIONAL)
@@ -107,12 +111,14 @@ float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         ShadowHitInfo shadowPayload;
         shadowPayload.occlusion = 1.0F;
         shadowPayload.distance = 0.01F;
-        //if(dot(ray.Direction, normal) > 0.0F)
+        if(dot(ray.Direction, normal) > 0.0F)
         {
             TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
-            if(shadowPayload.distance > 0.0F)
+            if(shadowPayload.distance >= 0.0F)
                 shadowDistance = shadowPayload.distance;
         }
+        else
+            shadowDistance = NRD_FP16_MAX;
     }
     else if(light.Type == LIGHT_TYPE_POINTLIGHT)
     {
@@ -130,12 +136,14 @@ float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         ShadowHitInfo shadowPayload;
         shadowPayload.occlusion = 1.0F;
         shadowPayload.distance = 0.01F;
-        //if(dot(ray.Direction, normal) > 0.0F)
+        if(dot(ray.Direction, normal) > 0.0F)
         {
             TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
-            if(shadowPayload.distance > 0.0F)
+            if(shadowPayload.distance >= 0.0F)
                 shadowDistance = shadowPayload.distance;
         }
+        else
+            shadowDistance = NRD_FP16_MAX;
     }
     else if(light.Type == LIGHT_TYPE_SPOTLIGHT)
     {
@@ -153,12 +161,14 @@ float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         ShadowHitInfo shadowPayload;
         shadowPayload.occlusion = 1.0F;
         shadowPayload.distance = 0.01F;
-        //if(dot(ray.Direction, normal) > 0.0F)
+        if(dot(ray.Direction, normal) > 0.0F)
         {
             TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
-            if(shadowPayload.distance > 0.0F)
+            if(shadowPayload.distance >= 0.0F)
                 shadowDistance = shadowPayload.distance;
         }
+        else
+            shadowDistance = NRD_FP16_MAX;
     }
     
     return shadowDistance;
@@ -259,7 +269,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     gLights[1].FalloffStart = 0.01;
     gLights[1].FalloffEnd = 10.0;
     gLights[1].SpotPower = 1.0;
-    gLights[1].Radius = 0.0;
+    gLights[1].Radius = 0.3;
     gLights[1].Type = LIGHT_TYPE_SPOTLIGHT;
     
     //global vars
@@ -331,10 +341,6 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     if(aoPayload.isHit)
         hitColor.a = aoPayload.hitT;
     
-    //shadows
-    float shadowDistance = 0.0;
-    shadowDistance = calcShadow(gLights[0], worldOrigin, norm, seed);
-    
     //blinn phong
     const float shininess = max(1.0F - material.roughness, 0.01F);
     LightMaterial mat = { diffuseAlbedo, material.fresnelR0, shininess };
@@ -343,7 +349,24 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     hitColor.rgb += directLight.rgb * diffuseAlbedo.rgb;
     hitColor.rgb += indirectLight * diffuseAlbedo.rgb;
-    if(shadowDistance == 0.0)
+    
+    //shadows
+    float3 LSum = 0;
+    bool shadowed = false;
+    SIGMA_MULTILIGHT_DATATYPE shadowData = SIGMA_FrontEnd_MultiLightStart();
+    for(int i = 0; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
+    {
+        float w = 1;
+        float3 L = 1;
+        LSum += L;
+        
+        float shadowDistance = calcShadow(gLights[i], worldOrigin, norm, seed);
+        if(shadowDistance == NRD_FP16_MAX)
+            shadowed = true;
+        SIGMA_FrontEnd_MultiLightUpdate(L, shadowDistance, tan(gLights[i].Radius * 0.5), w, shadowData);
+    }
+    
+    if(shadowed)
         payload.specularAndDistance.rgb = specAlbedo;
     
     //reflections
@@ -451,5 +474,5 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     payload.albedoAndZ = float4(mapColor.rgb, mul(float4(worldOrigin, 1.0), gView).z);
     if(material.roughness >= 0.05)
         payload.virtualZ = payload.albedoAndZ.w;
-    payload.shadow = float2(shadowDistance, tan(gLights[0].Radius * 0.5));
+    payload.shadow = SIGMA_FrontEnd_MultiLightEnd(payload.albedoAndZ.w, shadowData, LSum, payload.shadowTranslucency);
 }

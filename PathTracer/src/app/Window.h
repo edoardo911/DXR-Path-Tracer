@@ -112,6 +112,7 @@ namespace RT
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedComposite;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mShadowData;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mShadowDenoised;
+		Microsoft::WRL::ComPtr<ID3D12Resource> mShadowTranslucency;
 
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedTexture;
 		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedSpecular;

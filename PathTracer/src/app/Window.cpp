@@ -280,7 +280,7 @@ namespace RT
 		methods[0].renderWidth = settings.dlss ? settings.dlssWidth : settings.width;
 		methods[0].renderHeight = settings.dlss ? settings.dlssHeight : settings.height;
 		methods[0].identifier = 0;
-		methods[1].denoiser = nrd::Denoiser::SIGMA_SHADOW;
+		methods[1].denoiser = nrd::Denoiser::SIGMA_SHADOW_TRANSLUCENCY;
 		methods[1].renderWidth = settings.dlss ? settings.dlssWidth : settings.width;
 		methods[1].renderHeight = settings.dlss ? settings.dlssHeight : settings.height;
 		methods[1].identifier = 1;
@@ -295,6 +295,10 @@ namespace RT
 		nrd::ReblurSettings s = {};
 		s.hitDistanceReconstructionMode = nrd::HitDistanceReconstructionMode::AREA_3X3;
 		nrd::SetDenoiserSettings(*mDenoiser, 0, &s);
+
+		nrd::SigmaSettings ss = {};
+		ss.blurRadiusScale = 2;
+		nrd::SetDenoiserSettings(*mDenoiser, 1, &ss);
 
 		createDenoiserPipelines();
 		createDenoiserResources();
@@ -401,6 +405,7 @@ namespace RT
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mDenoisedSpecular)));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mSpecular)));
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mShadowDenoised)));
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mShadowTranslucency)));
 
 		resDesc.Format = DXGI_FORMAT_R16G16_FLOAT;
 		ThrowIfFailed(md3dDevice->CreateCommittedResource(&hpd, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(&mShadowData)));
@@ -795,6 +800,11 @@ namespace RT
 				else if(res.type == nrd::ResourceType::OUT_SHADOW_TRANSLUCENCY)
 				{
 					tex = mShadowDenoised.Get();
+					format = settings.backBufferFormat;
+				}
+				else if(res.type == nrd::ResourceType::IN_SHADOW_TRANSLUCENCY)
+				{
+					tex = mShadowTranslucency.Get();
 					format = settings.backBufferFormat;
 				}
 				else
