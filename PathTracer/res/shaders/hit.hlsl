@@ -90,7 +90,7 @@ float computeTextureLOD(uint2 size, float3 d, float t)
 #endif
 }
 
-float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
+float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed, out float occlusion)
 {
     float shadowDistance = NRD_FP16_MAX;
     float distanceToLight = 0;
@@ -115,7 +115,10 @@ float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         {
             TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance >= 0.0F)
+            {
                 shadowDistance = shadowPayload.distance;
+                occlusion = shadowPayload.occlusion;
+            }
         }
         else
             shadowDistance = NRD_FP16_MAX;
@@ -140,7 +143,10 @@ float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         {
             TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance >= 0.0F)
+            {
                 shadowDistance = shadowPayload.distance;
+                occlusion = shadowPayload.occlusion;
+            }
         }
         else
             shadowDistance = NRD_FP16_MAX;
@@ -165,7 +171,10 @@ float calcShadow(Light light, float3 worldOrigin, float3 normal, uint seed)
         {
             TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 1, 0, 1, ray, shadowPayload);
             if(shadowPayload.distance >= 0.0F)
+            {
                 shadowDistance = shadowPayload.distance;
+                occlusion = shadowPayload.occlusion;
+            }
         }
         else
             shadowDistance = NRD_FP16_MAX;
@@ -360,10 +369,23 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
         float3 L = 1;
         LSum += L;
         
-        float shadowDistance = calcShadow(gLights[i], worldOrigin, norm, seed);
-        if(shadowDistance == NRD_FP16_MAX)
-            shadowed = true;
-        SIGMA_FrontEnd_MultiLightUpdate(L, shadowDistance, tan(gLights[i].Radius * 0.5), w, shadowData);
+        float occlusion;
+        float shadowDistance = calcShadow(gLights[i], worldOrigin, norm, seed, occlusion);
+        if(payload.recursionDepth == 1)
+        {
+            if(shadowDistance == NRD_FP16_MAX)
+                shadowed = true;
+            SIGMA_FrontEnd_MultiLightUpdate(L, shadowDistance, tan(gLights[i].Radius * 0.5), w, shadowData);
+        }
+        else if(shadowDistance < NRD_FP16_MAX)
+        {
+            float occlusionFactor = 0;
+            if(occlusion >= 0.5)
+                occlusionFactor = occlusion * occlusion;
+            else
+                occlusionFactor = occlusion * 0.43;
+            hitColor *= min(0.7 + (shadowDistance / (60.0 * occlusionFactor)), 1.0);
+        }
     }
     
     if(shadowed)
