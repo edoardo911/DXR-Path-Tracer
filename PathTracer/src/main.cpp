@@ -991,8 +991,6 @@ void App::keyboardInput()
 	if(keyboard.isKeyPressed(VK_F3))
 		mDenoised = !mDenoised;
 
-	if(keyboard.isKeyDown(VK_SPACE))
-		mMainPassCB.frameIndex = 1; //TODO reset denoiser & DLSS
 	if(keyboard.isKeyPressed(VK_F11))
 		toggleFullscreen();
 }

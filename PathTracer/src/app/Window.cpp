@@ -296,10 +296,6 @@ namespace RT
 		s.hitDistanceReconstructionMode = nrd::HitDistanceReconstructionMode::AREA_3X3;
 		nrd::SetDenoiserSettings(*mDenoiser, 0, &s);
 
-		nrd::SigmaSettings ss = {};
-		ss.blurRadiusScale = 2;
-		nrd::SetDenoiserSettings(*mDenoiser, 1, &ss);
-
 		createDenoiserPipelines();
 		createDenoiserResources();
 		return true;
@@ -554,7 +550,7 @@ namespace RT
 			else
 			{
 				mTimer.tick();
-				if(!mWindowPaused)
+				if(true) //!mWindowPaused
 				{
 					update();
 					counter += mTimer.deltaTime();
