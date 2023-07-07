@@ -550,7 +550,7 @@ namespace RT
 			else
 			{
 				mTimer.tick();
-				if(mWindowPaused)
+				if(!mWindowPaused)
 				{
 					update();
 					counter += mTimer.deltaTime();
