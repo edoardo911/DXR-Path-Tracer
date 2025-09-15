@@ -83,8 +83,6 @@ namespace nv_helpers_dx12
 	class TopLevelASGenerator
 	{
 	public:
-		inline void clean() { m_instances.clear(); }
-
 		/// Add an instance to the top-level acceleration structure. The instance is
 		/// represented by a bottom-level AS, a transform, an instance ID and the
 		/// index of the hit group indicating which shaders are executed upon hitting
@@ -92,7 +90,7 @@ namespace nv_helpers_dx12
 		void
 		AddInstance(ID3D12Resource* bottomLevelAS, /// Bottom-level acceleration structure containing the
                                              /// actual geometric data of the instance
-		            const DirectX::XMMATRIX& transform, /// Transform matrix to apply to the instance,
+		            DirectX::XMMATRIX transform, /// Transform matrix to apply to the instance,
                                                   /// allowing the same bottom-level AS to be used
                                                   /// at several world-space positions
 		            UINT instanceID, /// Instance ID, which can be used in the shaders to
@@ -100,7 +98,7 @@ namespace nv_helpers_dx12
 		            UINT hitGroupIndex, /// Hit group index, corresponding the the index of the
                                  /// hit group in the Shader Binding Table that will be
                                  /// invocated upon hitting the geometry
-					UINT mask
+					UINT mask, bool opaque
 		);
 
 		/// Compute the size of the scratch space required to build the acceleration
@@ -138,21 +136,32 @@ namespace nv_helpers_dx12
 
 		inline void clearInstances() { m_instances.clear(); }
 
+		inline void updateWorld(UINT id, DirectX::XMMATRIX w)
+		{
+			m_instances[id].transform = w;
+		}
+
+		inline void updateGeo(UINT id, ID3D12Resource* blas)
+		{
+			m_instances[id].bottomLevelAS = blas;
+		}
 	private:
 		/// Helper struct storing the instance data
 		struct Instance
 		{
-			Instance(ID3D12Resource* blAS, const DirectX::XMMATRIX& tr, UINT iID, UINT hgId, UINT mask);
+			Instance(ID3D12Resource* blAS, DirectX::XMMATRIX tr, UINT iID, UINT hgId, UINT mask, bool opaque);
 			/// Bottom-level AS
 			ID3D12Resource* bottomLevelAS;
 			/// Transform matrix
-			const DirectX::XMMATRIX& transform;
+			DirectX::XMMATRIX transform;
 			/// Instance ID visible in the shader
 			UINT instanceID;
 			/// Hit group index used to fetch the shaders from the SBT
 			UINT hitGroupIndex;
 
 			UINT mask;
+
+			bool opaque;
 		};
 
 		/// Construction flags, indicating whether the AS supports iterative updates

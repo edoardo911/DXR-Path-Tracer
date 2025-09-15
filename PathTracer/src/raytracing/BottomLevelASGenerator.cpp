@@ -87,35 +87,102 @@ namespace nv_helpers_dx12
 		// vertices. This buffer cannot be nullptr
 		const UINT64 transformOffsetInBytes, // Offset of the transform matrix in the
 		// transform buffer
-		const bool isOpaque /* = true */ // If true, the geometry is considered opaque,
+		const bool isOpaque, /* = true */ // If true, the geometry is considered opaque,
 		// optimizing the search for a closest hit
+		const bool tessellated
 	)
 	{
 		// Create the DX12 descriptor representing the input data, assumed to be
 		// opaque triangles, with 3xf32 vertex coordinates and 32-bit indices
 		D3D12_RAYTRACING_GEOMETRY_DESC descriptor;
-		descriptor.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-		descriptor.Triangles.VertexBuffer.StartAddress =
-			vertexBuffer->GetGPUVirtualAddress() + vertexOffsetInBytes;
-		descriptor.Triangles.VertexBuffer.StrideInBytes = vertexSizeInBytes;
-		descriptor.Triangles.VertexCount = vertexCount;
-		descriptor.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-		descriptor.Triangles.IndexBuffer =
-			indexBuffer
-				? (indexBuffer->GetGPUVirtualAddress() + indexOffsetInBytes)
-				: 0;
-		descriptor.Triangles.IndexFormat =
-			indexBuffer ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_UNKNOWN;
-		descriptor.Triangles.IndexCount = indexCount;
-		descriptor.Triangles.Transform3x4 =
-			transformBuffer
-				? (transformBuffer->GetGPUVirtualAddress() + transformOffsetInBytes)
-				: 0;
+		if(!tessellated)
+		{
+			descriptor.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+			descriptor.Triangles.VertexBuffer.StartAddress =
+				vertexBuffer->GetGPUVirtualAddress() + vertexOffsetInBytes;
+			descriptor.Triangles.VertexBuffer.StrideInBytes = vertexSizeInBytes;
+			descriptor.Triangles.VertexCount = vertexCount;
+			descriptor.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+			descriptor.Triangles.IndexBuffer =
+				indexBuffer
+					? (indexBuffer->GetGPUVirtualAddress() + indexOffsetInBytes)
+					: 0;
+			descriptor.Triangles.IndexFormat =
+				indexBuffer ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_UNKNOWN;
+			descriptor.Triangles.IndexCount = indexCount;
+			descriptor.Triangles.Transform3x4 =
+				transformBuffer
+					? (transformBuffer->GetGPUVirtualAddress() + transformOffsetInBytes)
+					: 0;
+		}
+		else
+		{
+			descriptor.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+			descriptor.AABBs.AABBs.StartAddress = vertexBuffer->GetGPUVirtualAddress() + vertexOffsetInBytes;
+			descriptor.AABBs.AABBs.StrideInBytes = vertexSizeInBytes;
+			descriptor.AABBs.AABBCount = vertexCount;
+		}
 		descriptor.Flags = isOpaque
 			                   ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE
 			                   : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 
 		m_vertexBuffers.push_back(descriptor);
+	}
+
+	void BottomLevelASGenerator::updateVertexBuffer(
+		ID3D12Resource* vertexBuffer, // Buffer containing the vertex coordinates,
+		// possibly interleaved with other vertex data
+		const UINT64 vertexOffsetInBytes, // Offset of the first vertex in the vertex buffer
+		const uint32_t vertexCount, // Number of vertices to consider in the buffer
+		const UINT vertexSizeInBytes, // Size of a vertex including all its other data,
+		// used to stride in the buffer
+		ID3D12Resource* indexBuffer, // Buffer containing the vertex indices
+		// describing the triangles
+		const UINT64 indexOffsetInBytes, // Offset of the first index in the index buffer
+		const uint32_t indexCount, // Number of indices to consider in the buffer
+		ID3D12Resource* transformBuffer, // Buffer containing a 4x4 transform matrix
+		// in GPU memory, to be applied to the
+		// vertices. This buffer cannot be nullptr
+		const UINT64 transformOffsetInBytes, // Offset of the transform matrix in the
+		// transform buffer
+		const bool isOpaque, /* = true */ // If true, the geometry is considered opaque,
+		// optimizing the search for a closest hit
+		const bool tessellated
+	)
+	{
+		D3D12_RAYTRACING_GEOMETRY_DESC descriptor;
+		if(!tessellated)
+		{
+			descriptor.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+			descriptor.Triangles.VertexBuffer.StartAddress =
+				vertexBuffer->GetGPUVirtualAddress() + vertexOffsetInBytes;
+			descriptor.Triangles.VertexBuffer.StrideInBytes = vertexSizeInBytes;
+			descriptor.Triangles.VertexCount = vertexCount;
+			descriptor.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+			descriptor.Triangles.IndexBuffer =
+				indexBuffer
+				? (indexBuffer->GetGPUVirtualAddress() + indexOffsetInBytes)
+				: 0;
+			descriptor.Triangles.IndexFormat =
+				indexBuffer ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_UNKNOWN;
+			descriptor.Triangles.IndexCount = indexCount;
+			descriptor.Triangles.Transform3x4 =
+				transformBuffer
+				? (transformBuffer->GetGPUVirtualAddress() + transformOffsetInBytes)
+				: 0;
+		}
+		else
+		{
+			descriptor.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+			descriptor.AABBs.AABBs.StartAddress = vertexBuffer->GetGPUVirtualAddress() + vertexOffsetInBytes;
+			descriptor.AABBs.AABBs.StrideInBytes = vertexSizeInBytes;
+			descriptor.AABBs.AABBCount = vertexCount;
+		}
+		descriptor.Flags = isOpaque
+			? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE
+			: D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+
+		m_vertexBuffers[0] = descriptor;
 	}
 
 	//--------------------------------------------------------------------------------------------------
@@ -194,11 +261,11 @@ namespace nv_helpers_dx12
 		// The stored flags represent whether the AS has been built for updates or
 		// not. If yes and an update is requested, the builder is told to only update
 		// the AS instead of fully rebuilding it
-		if(flags == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE && updateOnly)
-			flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+		if((flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE) != 0 && updateOnly)
+			flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
 
 		// Sanity checks
-		if(m_flags != D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE && updateOnly)
+		if((m_flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE) == 0 && updateOnly)
 			throw RT::RaytracingException("Cannot update a bottom-level AS not originally built for updates");
 		if(updateOnly && previousResult == nullptr)
 			throw RT::RaytracingException("Bottom-level hierarchy update requires the previous hierarchy");

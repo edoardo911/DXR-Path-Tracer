@@ -39,8 +39,11 @@ namespace RT
 
 	bool Keyboard::isKeyPressed(UINT key)
 	{
-		bool val = lastKeys[key];
-		lastKeys[key] = false;
-		return val && !keys[key];
+		return lastKeys[key] && !keys[key];
+	}
+
+	void Keyboard::clearStates()
+	{
+		ZeroMemory(lastKeys, sizeof(bool) * SUPPORTED_KEYBOARD_KEYS);
 	}
 }

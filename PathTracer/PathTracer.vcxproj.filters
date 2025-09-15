@@ -1,164 +1,257 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="res">
+      <UniqueIdentifier>{4FA5880B-BBAE-887C-442A-9F7CB032947C}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="res\shaders">
+      <UniqueIdentifier>{4841F028-B4F6-681E-3DEB-62F5A99F5F22}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="res\shaders\postprocessing">
+      <UniqueIdentifier>{7ADB9621-66EB-42F2-CFA4-A710BBD3318B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\app">
+      <UniqueIdentifier>{FDEA2FA9-69CA-AE44-72E2-391BDE4015A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\input">
+      <UniqueIdentifier>{0C5966B5-78C3-1A2C-C101-CCD12DABF880}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\logging">
+      <UniqueIdentifier>{E300FA90-4FB6-7286-D8AA-6C5D445F698A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\raytracing">
+      <UniqueIdentifier>{308B10FA-1C59-0400-05ED-7426F159E064}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\rendering">
+      <UniqueIdentifier>{DA30684B-46F1-E381-0F2C-2DFF7BAB285E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\rendering\postprocessing">
+      <UniqueIdentifier>{CC84DA33-B83F-CADF-61F7-422A4D911470}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\utils">
+      <UniqueIdentifier>{6DAA42B6-D914-F72C-2253-A8D28EFCD481}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\TextureLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\Timer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\GeometryGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\rendering\Camera.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\rendering\FrameResource.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\raytracing\BottomLevelASGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\raytracing\RaytracingPipelineGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\raytracing\RootSignatureGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\raytracing\ShaderBindingTableGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\raytracing\TopLevelASGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\input\Keyboard.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\input\Mouse.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\app\Window.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\ModelLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\app\RaytracingInstance.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\logging\Logger.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\rendering\PostDenoise.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\rendering\Temporal.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\rendering\ColorAdjust.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\utils\UploadBuffer.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\app\Entity.h">
+      <Filter>src\app</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\settings.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\TextureLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\Timer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\d3dx12.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\GeometryGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\header.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\rendering\Camera.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\rendering\FrameResource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\raytracing\BottomLevelASGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\raytracing\DXRHelper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\raytracing\RaytracingPipelineGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\raytracing\RootSignatureGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\raytracing\ShaderBindingTableGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\raytracing\TopLevelASGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\input\Mouse.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\input\Keyboard.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\app\Scene.h">
+      <Filter>src\app</Filter>
     </ClInclude>
     <ClInclude Include="src\app\Window.h">
-      <Filter>Header Files</Filter>
+      <Filter>src\app</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\ModelLoader.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\input\Keyboard.h">
+      <Filter>src\input</Filter>
     </ClInclude>
-    <ClInclude Include="src\app\RaytracingInstance.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\d3dutil.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\keys.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\input\Mouse.h">
+      <Filter>src\input</Filter>
     </ClInclude>
     <ClInclude Include="src\logging\Logger.h">
-      <Filter>Header Files</Filter>
+      <Filter>src\logging</Filter>
     </ClInclude>
-    <ClInclude Include="src\rendering\PostDenoise.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\raytracing\BottomLevelASGenerator.h">
+      <Filter>src\raytracing</Filter>
     </ClInclude>
-    <ClInclude Include="src\rendering\Temporal.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\raytracing\DXRHelper.h">
+      <Filter>src\raytracing</Filter>
     </ClInclude>
-    <ClInclude Include="src\rendering\ColorAdjust.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\raytracing\RaytracingPipelineGenerator.h">
+      <Filter>src\raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\raytracing\RootSignatureGenerator.h">
+      <Filter>src\raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\raytracing\ShaderBindingTableGenerator.h">
+      <Filter>src\raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\raytracing\TopLevelASGenerator.h">
+      <Filter>src\raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\Camera.h">
+      <Filter>src\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\FrameResource.h">
+      <Filter>src\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\RaytracingRenderer.h">
+      <Filter>src\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\Renderer.h">
+      <Filter>src\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\postprocessing\ColorAdjust.h">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\postprocessing\ColorGrading.h">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\postprocessing\FXAA.h">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\postprocessing\PostProcessing.h">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\postprocessing\RTComposite.h">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\postprocessing\RestirSpatial.h">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendering\postprocessing\Vignette.h">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\GeometryGenerator.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\ModelLoader.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\TextureLoader.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Timer.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\UploadBuffer.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\d3dx12.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\exceptions.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\header.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\keys.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\settings.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\shader_data.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\utils.h">
+      <Filter>src\utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="res\shaders\post_denoise.hlsl" />
-    <FxCompile Include="res\shaders\temporal.hlsl" />
-    <FxCompile Include="res\shaders\color_adjust.hlsl" />
+    <ClCompile Include="src\app\Entity.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="src\app\Scene.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="src\app\Window.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\Keyboard.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\Mouse.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\logging\Logger.cpp">
+      <Filter>src\logging</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\raytracing\BottomLevelASGenerator.cpp">
+      <Filter>src\raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\raytracing\RaytracingPipelineGenerator.cpp">
+      <Filter>src\raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\raytracing\RootSignatureGenerator.cpp">
+      <Filter>src\raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\raytracing\ShaderBindingTableGenerator.cpp">
+      <Filter>src\raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\raytracing\TopLevelASGenerator.cpp">
+      <Filter>src\raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\Camera.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\FrameResource.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\RaytracingRenderer.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\Renderer.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\postprocessing\ColorAdjust.cpp">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\postprocessing\ColorGrading.cpp">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\postprocessing\FXAA.cpp">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\postprocessing\PostProcessing.cpp">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\postprocessing\RTComposite.cpp">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\postprocessing\RestirSpatial.cpp">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\postprocessing\Vignette.cpp">
+      <Filter>src\rendering\postprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\GeometryGenerator.cpp">
+      <Filter>src\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\ModelLoader.cpp">
+      <Filter>src\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\TextureLoader.cpp">
+      <Filter>src\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\Timer.cpp">
+      <Filter>src\utils</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="res\shaders\mv_alpha_tested_ps.hlsl">
+      <Filter>res\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="res\shaders\mv_ps.hlsl">
+      <Filter>res\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="res\shaders\mv_vs.hlsl">
+      <Filter>res\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\color_adjust.hlsl">
+      <Filter>res\shaders\postprocessing</Filter>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\color_grading.hlsl">
+      <Filter>res\shaders\postprocessing</Filter>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\fxaa.hlsl">
+      <Filter>res\shaders\postprocessing</Filter>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\restir_spatial.hlsl">
+      <Filter>res\shaders\postprocessing</Filter>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\rt_composite.hlsl">
+      <Filter>res\shaders\postprocessing</Filter>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\vignette.hlsl">
+      <Filter>res\shaders\postprocessing</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

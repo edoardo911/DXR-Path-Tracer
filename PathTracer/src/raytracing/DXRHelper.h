@@ -4,25 +4,11 @@
 
 #pragma once
 
-#include "../utils/D3DUtil.h"
+#include "../utils/header.h"
 #include <dxcapi.h>
 #pragma comment(lib, "dxcompiler.lib")
 
 #include <vector>
-
-namespace RT
-{
-	class RaytracingException: public std::exception
-	{
-	public:
-		explicit inline RaytracingException(const char* message): msg(message) {}
-		explicit inline RaytracingException(const std::string& message) : msg(message) {}
-		inline ~RaytracingException() noexcept {}
-		const char* what() const noexcept override { return msg.c_str(); }
-	private:
-		std::string msg;
-	};
-};
 
 namespace nv_helpers_dx12
 {

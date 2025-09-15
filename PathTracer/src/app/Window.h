@@ -1,49 +1,34 @@
 #pragma once
 
-#include "../utils/header.h"
-
-#include "../utils/Timer.h"
-
 #include "../input/Keyboard.h"
 #include "../input/Mouse.h"
 
+#include "../utils/header.h"
+#include "../utils/Timer.h"
+
+#include "../rendering/Renderer.h"
+
 namespace RT
 {
-	class DLSSException: public std::exception
-	{
-	public:
-		explicit inline DLSSException(const char* message): msg(message) {}
-		explicit inline DLSSException(const std::string& message) : msg(message) {}
-		inline ~DLSSException() noexcept {}
-		const char* what() const noexcept override { return msg.c_str(); }
-	private:
-		std::string msg;
-	};
-
 	class Window
 	{
 	public:
 		inline static Window* getWindow() { return mWindow; }
-		inline HINSTANCE windowInst() const { return mWindowInst; }
-		inline HWND mainWin() const { return mMainWin; }
-		inline float aspectRatio() const { return static_cast<float>(settings.width) / settings.height; }
+		inline HINSTANCE windowInst() { return mWindowInst; }
+		inline HWND mainWin() { return mMainWin; }
 
 		virtual ~Window();
 
-		virtual bool initialize();
+		bool initialize(std::string sceneName);
 		int run();
 
 		virtual LRESULT msgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-	protected:
-		static Window* mWindow;
 
-		Window(HINSTANCE hInstance);
-		Window(const Window&) = delete;
-		Window& operator=(const Window&) = delete;
+		inline int getFPS() const { return mFPS; }
 
-		virtual void update() = 0;
-		virtual void draw() = 0;
-		virtual void onResize();
+		void centerCursor(bool centerMousePos = true);
+
+		inline Renderer* getRenderer() const { return mRenderer.get(); }
 
 		inline void resetFPS()
 		{
@@ -53,110 +38,52 @@ namespace RT
 				mFrameTime = 1.0 / settings.fps;
 		}
 
-		inline void toggleCursor(bool active) const { ShowCursor(active); }
+		inline void maximize() { mMaximized = true; }
 
-		void centerCursor();
+		settings_struct settings {};
+	protected:
+		static Window* mWindow;
+
+		Window(HINSTANCE inst);
+		Window(const Window&) = delete;
+		Window& operator=(const Window&) = delete;
+
+		virtual void keyboardInput() = 0;
+		virtual void mouseInput() = 0;
+		virtual void onResize();
 
 		bool initMainWindow();
-		bool initDirectX12();
-		bool initDLSS();
-		bool initDenoiser();
-		void initDLSSFeature();
-		void resetDLSSFeature();
-
-		void getDisplayMode();
-		void toggleFullscreen();
-
+		
 		void calculateFrameStats();
 
-		void createDLSSResources();
-		void createDenoiserPipelines();
-		void createDenoiserResources();
-		void DLSS(ID3D12Resource* outputResource, float jitterX = 0.0F, float jitterY = 0.0F, bool reset = false);
-		void denoise(const nrd::CommonSettings& nrdSettings, ID3D12Resource* outputResource);
-
-		void createCommandObjects();
-		void createSwapChain();
-		void flushCommandQueue();
-
-		inline ID3D12Resource* currentBackBuffer() const { return mSwapChainBuffers[mCurrBackBuffer].Get(); }
-
-		Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
-		Microsoft::WRL::ComPtr<IDXGISwapChain2> mSwapChain;
-		Microsoft::WRL::ComPtr<ID3D12Device5> md3dDevice;
-		Microsoft::WRL::ComPtr<IDXGIAdapter3> mAdapter;
-
-		Microsoft::WRL::ComPtr<ID3D12Fence> mFence;
-		UINT64 mCurrentFence = 0;
-
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> mCommandList;
-		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mDirectCmdListAlloc;
-		Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCommandQueue;
-
-		static const int swapChainBufferCount = 2;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffers[swapChainBufferCount];
-
-		//dlss resources
-		Microsoft::WRL::ComPtr<ID3D12Resource> mDepthBuffer;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mMotionVectorBuffer;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mResolvedBuffer;
-
-		//denoiser
-		nrd::Instance* mDenoiser;
-		std::vector<Microsoft::WRL::ComPtr<ID3D12RootSignature>> mDenoiserRootSignatures;
-		std::vector<Microsoft::WRL::ComPtr<ID3D12PipelineState>> mDenoiserPipelines;
-		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> mDenoiserResources;
-		std::vector<Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>> mDenoiserResourcesHeaps;
-		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDenoiserSamplerHeap;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoiserCBV;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedComposite;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mShadowData;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mShadowDenoised;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mShadowTranslucency;
-
-		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedTexture;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mDenoisedSpecular;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mNormalRoughness;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mAlbedoMap;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mSky;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mZDepth;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mSpecular;
-
-		NVSDK_NGX_Handle* mFeature = nullptr;
-		NVSDK_NGX_Parameter* params = nullptr;
+		inline void printPerformance()
+		{
+			Logger::DEBUG.log("FPS: " + std::to_string(mFPS));
+			mRenderer->printMemoryInfo();
+		}
 
 		HINSTANCE mWindowInst = nullptr;
-
-		int mCurrBackBuffer = 0;
-
-		UINT mRtvDescriptorSize = 0;
-		UINT mDsvDescriptorSize = 0;
-		UINT mCbvSrvUavDescriptorSize = 0;
-
 		HWND mMainWin = nullptr;
-
-		DXGI_MODE_DESC mFullscreenMode = {};
 
 		bool mWindowPaused = false;
 		bool mMinimized = false;
 		bool mMaximized = false;
 		bool mResizing = false;
 
-		bool mFrameInExecution = false;
-
-		Timer mTimer;
-
 		Keyboard keyboard{};
 		Mouse mouse{};
 
-		settings_struct settings{};
+		Timer mTimer{};
 
-		float mFPS = 0;
-		float percUsedVMem = 0;
-		float mbsUsed = 0;
-
-		int phaseCount = 0;
+		std::unique_ptr<Renderer> mRenderer;
 	private:
 		double mFrameTime = 0.0;
+		int mFPS = 0;
+
+		void loadEngineSettings();
+		void loadSettings();
+		void saveSettings();
 	};
+
+	Window* createApp(HINSTANCE inst);
 }

@@ -24,6 +24,7 @@
 
 //DLSS
 #include <nvsdk_ngx_helpers.h>
+#include <nvsdk_ngx_helpers_dlssd.h>
 
 //denoiser
 #include <NRD.h>
@@ -31,11 +32,9 @@
 #include <NRDSettings.h>
 #include <NRDDescs.h>
 
-
 //standard libraries
 #include <unordered_map>
 #include <stdexcept>
-#include <iostream>
 #include <iostream>
 #include <comdef.h>
 #include <cassert>
@@ -60,6 +59,11 @@
 #endif
 
 //engine libraries
+#pragma warning(disable : 4251)
+
+#include "../logging/Logger.h"
+#include "exceptions.h"
 #include "settings.h"
-#include "d3dutil.h"
+#include "utils.h"
+#include "shader_data.h"
 #include "keys.h"

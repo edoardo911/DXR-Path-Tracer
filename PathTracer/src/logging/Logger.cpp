@@ -4,46 +4,66 @@
 
 namespace RT
 {
-	void Log::log(std::string string)
+	FILE* Logger::stream;
+
+	void Logger::setup()
 	{
-	#ifdef _DEBUG
-		std::wstring wide;
-		std::wstring prefix = L"";
-		std::wstring time = getTime();
+		INFO.setup(GetStdHandle(STD_OUTPUT_HANDLE));
+		WARN.setup(GetStdHandle(STD_OUTPUT_HANDLE));
+		ERR.setup(GetStdHandle(STD_OUTPUT_HANDLE));
+		DEBUG.setup(GetStdHandle(STD_OUTPUT_HANDLE));
 
-		if(severity == INFO)
-			prefix = L"[INFO]";
-		else if(severity == WARN)
-			prefix = L"[WARNING]";
-		else if(severity == ERR)
-			prefix = L"[ERROR]";
-
-		int convertResult = MultiByteToWideChar(CP_UTF8, 0, string.c_str(), (int) string.length(), NULL, 0);
-		wide.resize(convertResult);
-		MultiByteToWideChar(CP_UTF8, 0, string.c_str(), (int) string.length(), &wide[0], (int) wide.size());
-
-		::OutputDebugString((prefix + time + wide + L"\n").c_str());
-	#endif
+		errno_t err = freopen_s(&stream, "CONOUT$", "w", stdout);
+		if(err != 0)
+			::OutputDebugString(L"Error reassigning stdout to custom console window");
 	}
 
-	void Log::log(std::wstring string)
+	void Log::log(std::string string, bool breakLine, bool additionalInfo)
 	{
-	#ifdef _DEBUG
-		std::wstring prefix;
-		std::wstring time = getTime();
+		std::string output;
+		std::string end = breakLine ? "\n" : "";
 
-		if(severity == INFO)
-			prefix = L"[INFO]";
-		else if(severity == WARN)
-			prefix = L"[WARNING]";
-		else if(severity == ERR)
-			prefix = L"[ERROR]";
+		switch(severity)
+		{
+		case INFO:
+			output = "[INFO]    ";
+			break;
+		case WARN:
+			SetConsoleTextAttribute(consoleHandle, 14);
+			output = "[WARNING] ";
+			break;
+		case ERR:
+			SetConsoleTextAttribute(consoleHandle, 12);
+			output = "[ERROR]   ";
+			break;
+		case DEBUG:
+			SetConsoleTextAttribute(consoleHandle, 3);
+			output = "[DEBUG]   ";
+			break;
+		}
 
-		::OutputDebugString((prefix + time + string + L"\n").c_str());
-	#endif
+		if(additionalInfo)
+			printf((output + getTime() + string + end).c_str());
+		else
+			printf((string + end).c_str());
+
+		SetConsoleTextAttribute(consoleHandle, 7);
 	}
 
-	std::wstring Log::getTime()
+	void Log::log(std::wstring string, bool breakLine, bool additionalInfo)
+	{
+		std::string str;
+		size_t size;
+		str.resize(string.length());
+		wcstombs_s(&size, &str[0], str.size() + 1, string.c_str(), string.size());
+
+		Log::log(str, breakLine, additionalInfo);
+	}
+
+	void Log::log(int value, bool breakLine, bool additionalInfo) { Log::log(std::to_string(value), breakLine, additionalInfo); }
+	void Log::log(float value, bool breakLine, bool additionalInfo) { Log::log(std::to_string(value), breakLine, additionalInfo); }
+
+	std::string Log::getTime()
 	{
 		std::time_t rawTime;
 		std::tm timeInfo;
@@ -55,13 +75,6 @@ namespace RT
 		localtime_s(&timeInfo, &rawTime);
 		std::strftime(buffer, 30, "%d/%m/%Y (%H:%M:%S)", &timeInfo);
 
-		int convertResult = MultiByteToWideChar(CP_UTF8, 0, buffer, (int) strlen(buffer), NULL, 0);
-		time.resize(convertResult);
-		MultiByteToWideChar(CP_UTF8, 0, buffer, (int) strlen(buffer), &time[0], (int) time.size());
-
-		return L"[" + time + L"] ";
+		return "[" + std::string(buffer) + "] ";
 	}
-
-	void Log::log(int value) { Log::log(std::to_wstring(value)); }
-	void Log::log(float value) { Log::log(std::to_wstring(value)); }
 }

@@ -1,0 +1,5 @@
+albedo=(1.0, 0.0, 0.0, 0.3)
+fresnelR0=(0.04,0.04,0.04)
+roughness=0.05
+refraction_index=0.9
+specular=0.5

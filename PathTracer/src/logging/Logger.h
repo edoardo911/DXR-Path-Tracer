@@ -1,14 +1,18 @@
 #pragma once
 
+#include <Windows.h>
+#include <string>
+
 #include "../utils/header.h"
 
 namespace RT
 {
-	enum LOGGING_SEVERITY
+	enum LoggingSeverity
 	{
 		INFO = 0,
 		WARN = 1,
-		ERR = 2
+		ERR = 2,
+		DEBUG = 3
 	};
 
 	class Log
@@ -17,25 +21,33 @@ namespace RT
 	public:
 		Log() = delete;
 
-		void log(std::string string);
-		void log(std::wstring string);
-		void log(int value);
-		void log(float value);
+		void log(std::string string, bool breakLine = true, bool additionalInfo = true);
+		void log(std::wstring string, bool breakLine = true, bool additionalInfo = true);
+		void log(int value, bool breakLine = true, bool additionalInfo = true);
+		void log(float value, bool breakLine = true, bool additionalInfo = true);
 	protected:
-		inline Log(LOGGING_SEVERITY sev): severity(sev) {}
+		LoggingSeverity severity;
+		HANDLE consoleHandle = 0;
 
-		std::wstring getTime();
+		inline Log(LoggingSeverity sev): severity(sev) {}
 
-		LOGGING_SEVERITY severity;
+		inline void setup(HANDLE handle) { consoleHandle = handle; }
+
+		std::string getTime();
 	};
 
 	class Logger
 	{
 	public:
-		inline static Log INFO{ LOGGING_SEVERITY::INFO };
-		inline static Log WARN { LOGGING_SEVERITY::WARN };
-		inline static Log ERR{ LOGGING_SEVERITY::ERR };
+		inline static Log INFO{ LoggingSeverity::INFO };
+		inline static Log WARN{ LoggingSeverity::WARN };
+		inline static Log ERR{ LoggingSeverity::ERR };
+		inline static Log DEBUG{ LoggingSeverity::DEBUG };
+
+		static void setup();
 	private:
+		static FILE* stream;
+
 		Logger() = default;
 	};
 }

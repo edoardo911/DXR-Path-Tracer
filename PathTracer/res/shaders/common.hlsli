@@ -1,61 +1,39 @@
-#pragma once
+//constants
+#define MAX_LIGHTS                  16
 
-#define MAX_LIGHTS              16
-#define MAX_RECURSION_DEPTH     3
+#define TEX_FILTER_NEAREST			0
+#define TEX_FILTER_BILINEAR			1
+#define TEX_FILTER_TRILINEAR		2
+#define TEX_FILTER_ANISOTROPIC		3
 
-#define LIGHT_TYPE_DIRECTIONAL  0
-#define LIGHT_TYPE_POINTLIGHT   1
-#define LIGHT_TYPE_SPOTLIGHT    2
+#define LIGHT_TYPE_DIRECTIONAL		0
+#define LIGHT_TYPE_SPOTLIGHT		1
+#define LIGHT_TYPE_POINTLIGHT		2
 
-#define NUM_DIR_LIGHTS 0
-#define NUM_POINT_LIGHTS 0
-#define NUM_SPOT_LIGHTS 2
+#define HEIGHT_SCALE                0.05
+#define POM_MIN_LAYERS              8
+#define POM_MAX_LAYERS              32
 
-//payloads
-struct HitInfo
+//IO
+struct VertexIn
 {
-    float4 colorAndDistance;
-    float4 specularAndDistance;
-    float4 normalAndRough;
-    float4 albedoAndZ;
-    float4 shadowTranslucency;
-    float2 shadow;
-    float virtualZ;
-    uint recursionDepth;
+    float3 pos: POSITION0;
+    float3 normal: NORMAL;
+    float2 uvs: TEXCOORD;
+    float3 tangent: TANGENT;
 };
 
-struct ShadowHitInfo
+struct MVVertexOut
 {
-    float occlusion;
-    float distance;
+    float4 pos: SV_POSITION;
+    float4 posH: POSITION0;
+    float4 prevPosH: POSITION1;
+    float2 uvs: TEXCOORD;
+    float2 zPos: ZPOS;
+    nointerpolation uint instanceID: INSTANCEID;
 };
 
-struct AOHitInfo
-{
-    bool isHit;
-    float hitT;
-};
-
-struct PosPayload
-{
-    float4 hPosAndT;
-    int instanceID;
-};
-
-//other structs
-struct Attributes
-{
-    float2 bary;
-};
-
-struct Vertex
-{
-    float3 pos;
-    float2 uvs;
-    float3 normal;
-    float3 tangent;
-};
-
+//utility
 struct Light
 {
     float3 Strength;
@@ -64,141 +42,83 @@ struct Light
     float FalloffEnd;
     float3 Position;
     float SpotPower;
-    float Radius;
-    uint Type;
-};
-
-struct LightMaterial
-{
-    float4 DiffuseAlbedo;
-    float3 FresnelR0;
-    float Shininess;
+    int type;
+    float radius;
+    float2 pad;
 };
 
 struct Material
 {
     float4 diffuseAlbedo;
     float3 fresnelR0;
-    float fresnelPower;
     float roughness;
+    float4x4 matTransform;
+    float3 emission;
     float metallic;
     float refractionIndex;
-    int flags;
+    float specular;
+    int castsShadows;
 };
 
 struct ObjectData
 {
     float4x4 world;
-    float4x4 toPrevWorld;
-    int diffuseIndex;
+    float4x4 prevWorld;
+    float4x4 texTransform;
+    int materialIndex;
+    int textureIndex;
     int normalIndex;
-    uint matIndex;
+    int roughIndex;
+    int heightIndex;
+    int aoIndex;
+    int emissiveIndex;
+    int metallicIndex;
+    int isWater;
 };
 
-float CalcAttenuation(float d, float falloffStart, float falloffEnd)
+//input
+cbuffer cbPass: register(b0)
 {
-    return saturate((falloffEnd - d) / (falloffEnd - falloffStart));
+    float4x4 gView;
+    float4x4 gProj;
+    float4x4 gInvView;
+    float4x4 gInvProj;
+    float4x4 gViewProj;
+    float4x4 gViewProjPrev;
+    float4x4 gViewPrev;
+    float4x4 gShadowTransform;
+    float4x4 gViewProjTex;
+    float3 gEyePosW;
+    uint gTextureFilter;
+    uint gFrameIndex;
+    int gLightCount;
+    int gTexturing;
+    int gNormalMapping;
+    int gRoughMapping;
+    int gHeightMapping;
+    int gAOMapping;
+    int gSpecular;
+    int gReflectionsRT;
+    int gRefractionsRT;
+    int gRTAO;
+    int gIndirect;
+    uint gRayReconstruction;
+    uint gMipmaps;
+    int gShadowsRT;
+    int gMetallicMapping;
+    float2 jitter;
+    float gFov;
+    float gAspectRatio;
+    Light gLights[MAX_LIGHTS];
 }
 
-float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
-{
-    float cosIncidentAngle = saturate(dot(normal, lightVec));
+Texture2DArray gTextures: register(t0);
 
-    float f0 = 1.0F - cosIncidentAngle;
-    float3 reflectPercent = R0 + (1.0F - R0) * (f0 * f0 * f0 * f0 * f0);
-    return reflectPercent;
-}
+StructuredBuffer<Material> gMaterials: register(t0, space2);
+StructuredBuffer<ObjectData> gObjectData: register(t1, space2);
 
-float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, LightMaterial mat, out float3 specAlbedo)
-{
-    const float m = mat.Shininess * 256.0F;
-    float3 halfVec = normalize(toEye + lightVec);
+SamplerState gPointWrap: register(s0);
+SamplerState gBilinearWrap: register(s1);
+SamplerState gTrilinearWrap: register(s2);
 
-    float roughnessFactor = (m + 8.0F) * pow(max(dot(halfVec, normal), 0.0F), m) / 8.0F;
-    float3 fresnelFactor = SchlickFresnel(mat.FresnelR0, halfVec, lightVec);
-
-    specAlbedo = fresnelFactor * roughnessFactor;
-    specAlbedo = specAlbedo / (specAlbedo + 1.0F);
-    specAlbedo *= lightStrength;
-
-    return lightStrength;
-}
-
-float3 ComputeDirectionalLight(Light L, LightMaterial mat, float3 normal, float3 toEye, out float3 specAlbedo)
-{
-    float3 lightVec = -L.Direction;
-
-    float ndotl = max(dot(lightVec, normal), 0.0F);
-    float3 lightStrength = L.Strength * ndotl;
-
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat, specAlbedo);
-}
-
-float3 ComputePointLight(Light L, LightMaterial mat, float3 pos, float3 normal, float3 toEye, out float3 specAlbedo)
-{
-    float3 lightVec = L.Position - pos;
-    float d = length(lightVec);
-
-    if (d > L.FalloffEnd)
-        return 0.0F;
-
-    lightVec /= d;
-
-    float ndotl = max(dot(lightVec, normal), 0.0F);
-    float3 lightStrength = L.Strength * ndotl;
-
-    float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
-    lightStrength *= att;
-
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat, specAlbedo);
-}
-
-float3 ComputeSpotLight(Light L, LightMaterial mat, float3 pos, float3 normal, float3 toEye, out float3 specAlbedo)
-{
-    float3 lightVec = L.Position - pos;
-    float d = length(lightVec);
-
-    if (d > L.FalloffEnd)
-        return 0.0F;
-
-    lightVec /= d;
-
-    float ndotl = max(dot(lightVec, normal), 0.0F);
-    float3 lightStrength = L.Strength * ndotl;
-
-    float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
-    lightStrength *= att;
-
-    float spotFactor = pow(max(dot(-lightVec, L.Direction), 0.0F), L.SpotPower);
-    lightStrength *= spotFactor;
-
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat, specAlbedo);
-}
-
-float4 ComputeLighting(Light light, LightMaterial mat, float3 pos, float3 normal, float3 toEye, out float3 specAlbedo)
-{
-    float3 result = 0.0F;
-    int i = 0;
-
-    if(light.Type == LIGHT_TYPE_DIRECTIONAL)
-        result += ComputeDirectionalLight(light, mat, normal, toEye, specAlbedo);
-    else if(light.Type == LIGHT_TYPE_POINTLIGHT)
-        result += ComputePointLight(light, mat, pos, normal, toEye, specAlbedo);
-    else if(light.Type == LIGHT_TYPE_SPOTLIGHT)
-        result += ComputeSpotLight(light, mat, pos, normal, toEye, specAlbedo);
-
-    return float4(result, 0.0F);
-}
-
-float3 normalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, float3 tangentW)
-{
-    float3 normalT = 2.0 * normalMapSample - 1.0;
-
-    float3 N = unitNormalW;
-    float3 T = normalize(tangentW - dot(tangentW, N) * N);
-    float3 B = cross(N, T);
-
-    float3x3 TBN = float3x3(T, B, N);
-
-    return mul(normalT, TBN);
-}
+#include "utils.hlsli"

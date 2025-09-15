@@ -1,14 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
@@ -19,49 +11,28 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{F350D6BB-DF08-1809-4810-F16434E7B2F9}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{b3fcd644-cfb1-44d0-969c-29edac985681}</ProjectGuid>
     <RootNamespace>PathTracer</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -70,97 +41,69 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\bin\Debug-windows-x86_64\PathTracer\</OutDir>
+    <IntDir>..\bin-int\Debug-windows-x86_64\PathTracer\</IntDir>
+    <TargetName>PathTracer</TargetName>
+    <TargetExt>.exe</TargetExt>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Release-windows-x86_64\PathTracer\</OutDir>
+    <IntDir>..\bin-int\Release-windows-x86_64\PathTracer\</IntDir>
+    <TargetName>PathTracer</TargetName>
+    <TargetExt>.exe</TargetExt>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>UGE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\vendor\dlss\include;..\vendor\_NRD_SDK\Include;..\vendor\tinygltf;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalOptions>/MDd %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\include;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\lib\debug;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Lib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>nvsdk_ngx_d_dbg.lib;NRD.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>NRD.lib;nvsdk_ngx_d_dbg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\vendor\dlss\lib\debug;..\vendor\_NRD_SDK\Lib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>UGE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\vendor\dlss\include;..\vendor\_NRD_SDK\Include;..\vendor\tinygltf;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>/MD /Ot %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\include;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>nvsdk_ngx_d.lib;NRD.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\dlss\lib\release;D:\Edoardo\Info\C++ - C\C++\VisualStudio\PathTracer\Include\_NRD_SDK\Lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>NRD.lib;nvsdk_ngx_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\vendor\dlss\lib\release;..\vendor\_NRD_SDK\Lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\app\RaytracingInstance.cpp" />
-    <ClCompile Include="src\app\Window.cpp" />
-    <ClCompile Include="src\input\Keyboard.cpp" />
-    <ClCompile Include="src\input\Mouse.cpp" />
-    <ClCompile Include="src\logging\Logger.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\raytracing\BottomLevelASGenerator.cpp" />
-    <ClCompile Include="src\raytracing\RaytracingPipelineGenerator.cpp" />
-    <ClCompile Include="src\raytracing\RootSignatureGenerator.cpp" />
-    <ClCompile Include="src\raytracing\ShaderBindingTableGenerator.cpp" />
-    <ClCompile Include="src\raytracing\TopLevelASGenerator.cpp" />
-    <ClCompile Include="src\rendering\Camera.cpp" />
-    <ClCompile Include="src\rendering\ColorAdjust.cpp" />
-    <ClCompile Include="src\rendering\FrameResource.cpp" />
-    <ClCompile Include="src\rendering\PostDenoise.cpp" />
-    <ClCompile Include="src\rendering\Temporal.cpp" />
-    <ClCompile Include="src\utils\GeometryGenerator.cpp" />
-    <ClCompile Include="src\utils\ModelLoader.cpp" />
-    <ClCompile Include="src\utils\TextureLoader.cpp" />
-    <ClCompile Include="src\utils\Timer.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\app\RaytracingInstance.h" />
+    <ClInclude Include="src\app\Entity.h" />
+    <ClInclude Include="src\app\Scene.h" />
     <ClInclude Include="src\app\Window.h" />
     <ClInclude Include="src\input\Keyboard.h" />
     <ClInclude Include="src\input\Mouse.h" />
@@ -172,56 +115,112 @@
     <ClInclude Include="src\raytracing\ShaderBindingTableGenerator.h" />
     <ClInclude Include="src\raytracing\TopLevelASGenerator.h" />
     <ClInclude Include="src\rendering\Camera.h" />
-    <ClInclude Include="src\rendering\ColorAdjust.h" />
     <ClInclude Include="src\rendering\FrameResource.h" />
-    <ClInclude Include="src\rendering\PostDenoise.h" />
-    <ClInclude Include="src\rendering\Temporal.h" />
-    <ClInclude Include="src\utils\d3dutil.h" />
-    <ClInclude Include="src\utils\d3dx12.h" />
+    <ClInclude Include="src\rendering\RaytracingRenderer.h" />
+    <ClInclude Include="src\rendering\Renderer.h" />
+    <ClInclude Include="src\rendering\postprocessing\ColorAdjust.h" />
+    <ClInclude Include="src\rendering\postprocessing\ColorGrading.h" />
+    <ClInclude Include="src\rendering\postprocessing\FXAA.h" />
+    <ClInclude Include="src\rendering\postprocessing\PostProcessing.h" />
+    <ClInclude Include="src\rendering\postprocessing\RTComposite.h" />
+    <ClInclude Include="src\rendering\postprocessing\RestirSpatial.h" />
+    <ClInclude Include="src\rendering\postprocessing\Vignette.h" />
     <ClInclude Include="src\utils\GeometryGenerator.h" />
-    <ClInclude Include="src\utils\header.h" />
-    <ClInclude Include="src\utils\keys.h" />
     <ClInclude Include="src\utils\ModelLoader.h" />
-    <ClInclude Include="src\utils\settings.h" />
     <ClInclude Include="src\utils\TextureLoader.h" />
     <ClInclude Include="src\utils\Timer.h" />
     <ClInclude Include="src\utils\UploadBuffer.h" />
+    <ClInclude Include="src\utils\d3dx12.h" />
+    <ClInclude Include="src\utils\exceptions.h" />
+    <ClInclude Include="src\utils\header.h" />
+    <ClInclude Include="src\utils\keys.h" />
+    <ClInclude Include="src\utils\settings.h" />
+    <ClInclude Include="src\utils\shader_data.h" />
+    <ClInclude Include="src\utils\utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="res\shaders\color_adjust.hlsl">
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+    <ClCompile Include="src\app\Entity.cpp" />
+    <ClCompile Include="src\app\Scene.cpp" />
+    <ClCompile Include="src\app\Window.cpp" />
+    <ClCompile Include="src\input\Keyboard.cpp" />
+    <ClCompile Include="src\input\Mouse.cpp" />
+    <ClCompile Include="src\logging\Logger.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\raytracing\BottomLevelASGenerator.cpp" />
+    <ClCompile Include="src\raytracing\RaytracingPipelineGenerator.cpp" />
+    <ClCompile Include="src\raytracing\RootSignatureGenerator.cpp" />
+    <ClCompile Include="src\raytracing\ShaderBindingTableGenerator.cpp" />
+    <ClCompile Include="src\raytracing\TopLevelASGenerator.cpp" />
+    <ClCompile Include="src\rendering\Camera.cpp" />
+    <ClCompile Include="src\rendering\FrameResource.cpp" />
+    <ClCompile Include="src\rendering\RaytracingRenderer.cpp" />
+    <ClCompile Include="src\rendering\Renderer.cpp" />
+    <ClCompile Include="src\rendering\postprocessing\ColorAdjust.cpp" />
+    <ClCompile Include="src\rendering\postprocessing\ColorGrading.cpp" />
+    <ClCompile Include="src\rendering\postprocessing\FXAA.cpp" />
+    <ClCompile Include="src\rendering\postprocessing\PostProcessing.cpp" />
+    <ClCompile Include="src\rendering\postprocessing\RTComposite.cpp" />
+    <ClCompile Include="src\rendering\postprocessing\RestirSpatial.cpp" />
+    <ClCompile Include="src\rendering\postprocessing\Vignette.cpp" />
+    <ClCompile Include="src\utils\GeometryGenerator.cpp" />
+    <ClCompile Include="src\utils\ModelLoader.cpp" />
+    <ClCompile Include="src\utils\TextureLoader.cpp" />
+    <ClCompile Include="src\utils\Timer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="res\shaders\mv_alpha_tested_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>./res/shaders/bin/mv_alpha_tested_ps.cso</ObjectFileOutput>
     </FxCompile>
-    <FxCompile Include="res\shaders\post_denoise.hlsl">
+    <FxCompile Include="res\shaders\mv_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>./res/shaders/bin/mv_ps.cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="res\shaders\mv_vs.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>./res/shaders/bin/mv_vs.cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\color_adjust.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">./res/shaders/bin/color_adjust.cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">./res/shaders/bin/color_adjust.cso</ObjectFileOutput>
     </FxCompile>
-    <FxCompile Include="res\shaders\temporal.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)res\shaders\bin\%(Filename).cso</ObjectFileOutput>
+    <FxCompile Include="res\shaders\postprocessing\color_grading.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>./res/shaders/bin/color_grading.cso</ObjectFileOutput>
     </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\fxaa.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>./res/shaders/bin/fxaa.cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\restir_spatial.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>./res/shaders/bin/restir_spatial.cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\rt_composite.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>./res/shaders/bin/rt_composite.cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="res\shaders\postprocessing\vignette.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>./res/shaders/bin/vignette.cso</ObjectFileOutput>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\shaders\common.hlsli" />
+    <None Include="res\shaders\pbr.hlsli" />
+    <None Include="res\shaders\utils.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

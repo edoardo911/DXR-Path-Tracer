@@ -63,7 +63,7 @@ namespace nv_helpers_dx12
 	void TopLevelASGenerator::AddInstance(
 		ID3D12Resource* bottomLevelAS, // Bottom-level acceleration structure containing the
 		// actual geometric data of the instance
-		const DirectX::XMMATRIX& transform, // Transform matrix to apply to the instance, allowing the
+		DirectX::XMMATRIX transform, // Transform matrix to apply to the instance, allowing the
 		// same bottom-level AS to be used at several world-space
 		// positions
 		const UINT instanceID, // Instance ID, which can be used in the shaders to
@@ -71,9 +71,9 @@ namespace nv_helpers_dx12
 		const UINT hitGroupIndex, // Hit group index, corresponding the the index of the
 		// hit group in the Shader Binding Table that will be
 		// invocated upon hitting the geometry
-		const UINT mask)
+		const UINT mask, const bool opaque)
 	{
-		m_instances.emplace_back(Instance(bottomLevelAS, transform, instanceID, hitGroupIndex, mask));
+		m_instances.emplace_back(Instance(bottomLevelAS, transform, instanceID, hitGroupIndex, mask, opaque));
 	}
 
 	//--------------------------------------------------------------------------------------------------
@@ -131,7 +131,7 @@ namespace nv_helpers_dx12
 
 		*scratchSizeInBytes = m_scratchSizeInBytes;
 		*resultSizeInBytes = m_resultSizeInBytes;
-		*descriptorsSizeInBytes = max(m_instanceDescsSizeInBytes, 1);
+		*descriptorsSizeInBytes = max(m_instanceDescsSizeInBytes, (UINT64) 1);
 	}
 
 	//--------------------------------------------------------------------------------------------------
@@ -174,7 +174,7 @@ namespace nv_helpers_dx12
 			// Index of the hit group invoked upon intersection
 			instanceDescs[i].InstanceContributionToHitGroupIndex = m_instances[i].hitGroupIndex;
 			// Instance flags, including backface culling, winding, etc
-			instanceDescs[i].Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+			instanceDescs[i].Flags = !m_instances[i].opaque ? D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_NON_OPAQUE : D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 			// Instance transform matrix
 			DirectX::XMMATRIX m = XMMatrixTranspose(
 				m_instances[i].transform); // GLM is column major, the INSTANCE_DESC is row major
@@ -235,6 +235,6 @@ namespace nv_helpers_dx12
 	//--------------------------------------------------------------------------------------------------
 	//
 	//
-	TopLevelASGenerator::Instance::Instance(ID3D12Resource* blAS, const DirectX::XMMATRIX& tr, const UINT iID, const UINT hgId, UINT mask)
-		: bottomLevelAS(blAS), transform(tr), instanceID(iID), hitGroupIndex(hgId), mask(mask) {}
+	TopLevelASGenerator::Instance::Instance(ID3D12Resource* blAS, DirectX::XMMATRIX tr, const UINT iID, const UINT hgId, UINT mask, bool opaque)
+		: bottomLevelAS(blAS), transform(tr), instanceID(iID), hitGroupIndex(hgId), mask(mask), opaque(opaque) {}
 } // namespace nv_helpers_dx12

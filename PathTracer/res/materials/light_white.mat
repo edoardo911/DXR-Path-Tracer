@@ -1,0 +1,6 @@
+albedo=(0.6, 0.6, 0.6, 1)
+emission=(1.0, 1.0, 1.0)
+casts_shadows=false
+fresnelR0=(0.04, 0.04, 0.04)
+roughness=0.3
+specular=0

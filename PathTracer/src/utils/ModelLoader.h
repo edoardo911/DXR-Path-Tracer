@@ -1,5 +1,6 @@
 #pragma once
-#include "../rendering/FrameResource.h"
+
+#include "header.h"
 
 namespace RT
 {

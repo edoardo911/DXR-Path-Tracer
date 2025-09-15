@@ -29,13 +29,18 @@ namespace RT
 		}
 	}
 
-	void Mouse::onButtonReleased(MouseButtons button)
+	void Mouse::onButtonRelease(MouseButtons button)
 	{
 		if(button >= 0 && button < SUPPORTED_MOUSE_KEYS)
 		{
 			lastButtons[button] = buttons[button];
 			buttons[button] = false;
 		}
+	}
+
+	void Mouse::onWheel(float amount)
+	{
+		wheel += (INT32) (amount / 120.0F);
 	}
 
 	bool Mouse::isButtonDown(MouseButtons button)
@@ -45,8 +50,11 @@ namespace RT
 
 	bool Mouse::isButtonClicked(MouseButtons button)
 	{
-		bool val = lastButtons[button];
-		lastButtons[button] = false;
-		return val && !buttons[button];
+		return lastButtons[button] && !buttons[button];
+	}
+
+	void Mouse::clearStates()
+	{
+		ZeroMemory(lastButtons, sizeof(bool) * SUPPORTED_MOUSE_KEYS);
 	}
 }

@@ -1,0 +1,200 @@
+id=1
+cubemap=grasscube1024
+textures={wood,metal}
+nmaps={wood,rough}
+rmaps={rm_metal,bulb_rough}
+emimaps={bulb_emissive}
+materials={default,rough,wall,metal,light_white,light_purple}
+geometries={#sphere,#quad,#grid,bulb}
+lights=3
+cameras=1
+
+#cameras
+
+{
+	pos=(0,0.5,-5)
+	look=(0,0,1)
+}
+
+#lights
+
+{
+	direction=(0,-1,0)
+	pos=(-2,2.45,-1)
+	strength=(1,1,1)
+	falloff_start=0.01
+	falloff_end=10
+	spot_power=1
+	type=spot_light
+	radius=0.15
+}
+{
+	direction=(0,-1,0)
+	pos=(1.7,2.45,-1)
+	strength=(1,0,1)
+	falloff_start=0.01
+	falloff_end=10
+	spot_power=1
+	type=spot_light
+	radius=0.3
+}
+{
+	direction=(0,0,0)
+	pos=(-1.4,0.45,-2)
+	strength=(0.1,1,0)
+	falloff_start=0.01
+	falloff_end=10
+	spot_power=0
+	type=point_light
+	radius=0.5
+}
+
+#instances
+
+{
+	id=0
+	geometry=0
+	layer=opaque
+	instances=1
+
+	{
+		material=3
+		texture=1
+		nmap=-1
+		rmap=0
+		hmap=-1
+		aomap=-1
+		emap=-1
+		mmap=-1
+		pos=(1,0,0)
+		rot=(0,0,0)
+		scale=(1,1,1)
+		tex_scale=(1,1,1)
+	}
+
+}
+{
+	id=1
+	geometry=0
+	layer=transparent
+	instances=1
+
+	{
+		material=1
+		texture=-1
+		nmap=1
+		rmap=-1
+		hmap=-1
+		aomap=-1
+		emap=-1
+		mmap=-1
+		pos=(-1,0,1)
+		rot=(0,0,0)
+		scale=(1,1,1)
+		tex_scale=(1,1,1)
+	}
+
+}
+{
+	id=2
+	geometry=2
+	layer=opaque
+	instances=1
+
+	{
+		material=0
+		texture=0
+		nmap=0
+		rmap=-1
+		hmap=-1
+		aomap=-1
+		emap=-1
+		mmap=-1
+		pos=(0,-0.5,-1.5)
+		rot=(0,0,0)
+		scale=(1,1,1)
+		tex_scale=(1,1,1)
+	}
+
+}
+{
+	id=3
+	geometry=1
+	layer=opaque
+	instances=1
+
+	{
+		material=2
+		texture=-1
+		nmap=1
+		rmap=-1
+		hmap=-1
+		aomap=-1
+		emap=-1
+		mmap=-1
+		pos=(0,0,0)
+		rot=(0,0,0)
+		scale=(1,1,1)
+		tex_scale=(1,1,1)
+	}
+
+}
+{
+	id=4
+	geometry=2
+	layer=opaque
+	instances=1
+
+	{
+		material=0
+		texture=-1
+		nmap=1
+		rmap=-1
+		hmap=-1
+		aomap=-1
+		emap=-1
+		mmap=-1
+		pos=(0,2.5,-1.5)
+		rot=(0,0,3.14159)
+		scale=(1,1,1)
+		tex_scale=(1,1,1)
+	}
+
+}
+{
+	id=5
+	geometry=3
+	layer=opaque
+	instances=2
+
+	{
+		material=4
+		texture=-1
+		nmap=-1
+		rmap=1
+		hmap=-1
+		aomap=-1
+		emap=0
+		mmap=-1
+		pos=(-2,2.25,-1)
+		rot=(0,0,3.14159)
+		scale=(0.1,0.1,0.1)
+		tex_scale=(1,1,1)
+	}
+
+	{
+		material=5
+		texture=-1
+		nmap=-1
+		rmap=1
+		hmap=-1
+		aomap=-1
+		emap=0
+		mmap=-1
+		pos=(1.7,2.25,-1)
+		rot=(0,0,3.14159)
+		scale=(0.1,0.1,0.1)
+		tex_scale=(1,1,1)
+	}
+
+}

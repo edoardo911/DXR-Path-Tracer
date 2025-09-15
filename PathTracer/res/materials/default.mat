@@ -1,0 +1,3 @@
+albedo=(1, 1, 1, 1)
+fresnelR0=(0.04, 0.04, 0.04)
+roughness=0.8

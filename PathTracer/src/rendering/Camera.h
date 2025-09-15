@@ -6,25 +6,19 @@ namespace RT
 {
 	class Camera
 	{
+		friend class ModuleRightBar;
 	public:
-		inline Camera(float aspectRatio) { setLens(0.25F * DirectX::XM_PI, aspectRatio, 0.01F, 10000.0F); }
+		inline Camera(float aspectRatio) { setLens(0.25F * DirectX::XM_PI, aspectRatio, 0.1F, 1000.0F); }
 		~Camera() = default;
 
-		void setPos(float, float, float);
-		void setPos(const DirectX::XMFLOAT3&);
-
-		void lookAt(const DirectX::XMFLOAT3&, const DirectX::XMFLOAT3&, const DirectX::XMFLOAT3&);
-		void lookAt(DirectX::XMVECTOR, DirectX::XMVECTOR, DirectX::XMVECTOR);
+		void setPos(float x, float y, float z);
+		void setPos(const DirectX::XMFLOAT3& pos);
+		void setPos(const DirectX::XMVECTOR& pos);
 
 		inline DirectX::XMMATRIX getView() const { return DirectX::XMLoadFloat4x4(&mView); }
 		inline DirectX::XMMATRIX getProj() const { return DirectX::XMLoadFloat4x4(&mProj); }
 		inline DirectX::XMMATRIX getViewPrev() const { return DirectX::XMLoadFloat4x4(&mViewPrev); }
 		inline DirectX::XMMATRIX getProjPrev() const { return DirectX::XMLoadFloat4x4(&mProjPrev); }
-		inline DirectX::XMFLOAT4X4 getView4x4() const { return mView; }
-		inline DirectX::XMFLOAT4X4 getProj4x4() const { return mProj; }
-		inline DirectX::XMFLOAT4X4 getViewPrev4x4() const { return mViewPrev; }
-		inline DirectX::XMFLOAT4X4 getProjPrev4x4() const { return mProjPrev; }
-
 		inline DirectX::XMVECTOR getPos() const { return DirectX::XMLoadFloat3(&mPosition); }
 		inline DirectX::XMVECTOR getRight() const { return DirectX::XMLoadFloat3(&mRight); }
 		inline DirectX::XMVECTOR getUp() const { return DirectX::XMLoadFloat3(&mUp); }
@@ -35,6 +29,7 @@ namespace RT
 		inline DirectX::XMFLOAT3 getLook3F() const { return mLook; }
 
 		inline void cleanView() { mViewDirty = false; }
+		inline void dirtView() { mViewDirty = true; }
 		void saveState();
 
 		inline float getNearZ() const { return mNearZ; }
@@ -49,14 +44,22 @@ namespace RT
 		inline float getFarWindowWidth() const { return mAspect * mFarWindowHeight; }
 		inline float getFarWindowHeight() const { return mFarWindowHeight; }
 
-		void setLens(float, float, float, float);
+		void setLens(float fovY, float aspectRatio, float zn, float zf);
 
-		void walk(float);
-		void strafe(float);
+		void lookAt(DirectX::XMVECTOR pos, DirectX::XMVECTOR target, DirectX::XMVECTOR worldUp);
+		void lookAt(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& target, const DirectX::XMFLOAT3& worldUp);
 
-		void pitch(float);
-		void rotateY(float);
-		void roll(float);
+		inline DirectX::XMFLOAT4X4 getView4x4() const { return mView; }
+		inline DirectX::XMFLOAT4X4 getProj4x4() const { return mProj; }
+		inline DirectX::XMFLOAT4X4 getView4x4Prev() const { return mViewPrev; }
+		inline DirectX::XMFLOAT4X4 getProj4x4Prev() const { return mProjPrev; }
+
+		void walk(float dx);
+		void strafe(float dx);
+
+		void pitch(float da);
+		void rotateY(float da);
+		void roll(float da);
 
 		void updateViewMatrix();
 	private:
@@ -79,4 +82,4 @@ namespace RT
 		DirectX::XMFLOAT4X4 mViewPrev = Identity4x4();
 		DirectX::XMFLOAT4X4 mProjPrev = Identity4x4();
 	};
-};
+}

@@ -1,0 +1,101 @@
+id=14
+cubemap=starbox
+textures={rusted_steel,wirefence,crate}
+nmaps={rusted_steel,wirefence}
+rmaps={rusted_steel}
+hmaps={rusted_steel}
+aomaps={rusted_steel}
+mmaps={rusted_steel}
+materials={metal,default}
+geometries={#plane,#box}
+lights=1
+cameras=1
+
+#cameras
+
+{
+	pos=(0,0,0)
+	look=(0,0,1)
+}
+
+#lights
+
+{
+	direction=(0,-1,0)
+	pos=(0,2,0)
+	strength=(1,1,1)
+	falloff_start=0.01
+	falloff_end=20
+	spot_power=3.98
+	type=spot_light
+	radius=0.15
+}
+
+#instances
+
+{
+	id=0
+	geometry=0
+	layer=opaque
+	instances=1
+
+	{
+		material=0
+		texture=0
+		nmap=0
+		rmap=0
+		hmap=0
+		aomap=0
+		emap=-1
+		mmap=0
+		pos=(0,0,0)
+		rot=(0,0,0)
+		scale=(1.5,1.5,1.5)
+		tex_scale=(5,5,5)
+	}
+
+}
+{
+	id=1
+	geometry=1
+	layer=alpha_tested
+	instances=1
+
+	{
+		material=0
+		texture=1
+		nmap=1
+		rmap=-1
+		hmap=-1
+		aomap=-1
+		emap=-1
+		mmap=-1
+		pos=(0,0.5,0)
+		rot=(0,0,0)
+		scale=(1,1,1)
+		tex_scale=(1,1,1)
+	}
+
+}
+{
+	id=2
+	geometry=1
+	layer=opaque
+	instances=1
+
+	{
+		material=1
+		texture=2
+		nmap=-1
+		rmap=-1
+		hmap=-1
+		aomap=-1
+		emap=-1
+		mmap=-1
+		pos=(3,1,0)
+		rot=(0,0,0)
+		scale=(1,1,1)
+		tex_scale=(1,1,1)
+	}
+
+}
