@@ -3,6 +3,7 @@ The application a fork of UnoGameEngine, my own game engine that started from an
 Ray tracing has been implemented following NVIDIA's tutorials and uses a version of their libraries modified by me.
 https://developer.nvidia.com/rtx/raytracing/dxr/DX12-Raytracing-tutorial-Part-1
 https://developer.nvidia.com/rtx/raytracing/dxr/dx12-raytracing-tutorial-part-2
+
 This path tracer includes:
 - DirectX Raytracing (DXR)
 - Monte carlo path tracing
@@ -37,7 +38,7 @@ On my machine (AMD Ryzen 7 1700, NVIDIA RTX 3060, 32GB RAM), 1080p all settings 
 
 # Screenshots
 Result:
-![Final Result](result.png)
+![Final Result](result.PNG)
 
 Box scene:
 ![Box Scene](box.png)
