@@ -12,6 +12,7 @@ This path tracer includes:
 - PBR materials
 - PBR rendering
 - Ray reconstruction (blurry)
+- ReSTIR
 
 # DLSS
 **DLSS** has been implemented following NVIDIA's guidelines
