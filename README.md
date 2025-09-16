@@ -1,4 +1,4 @@
-# DXR-Path-Tracer
+# Real Time Path Tracer
 The application a fork of UnoGameEngine, my own game engine that started from an implementation of the code from the book "3D Game Programming with DirectX 12" by Frank D. Luna.
 Ray tracing has been implemented following NVIDIA's tutorials and uses a version of their libraries modified by me.
 https://developer.nvidia.com/rtx/raytracing/dxr/DX12-Raytracing-tutorial-Part-1
